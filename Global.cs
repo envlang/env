@@ -5,4 +5,7 @@ public static class Global {
   public static Exe  Exe (string str) => new Exe (str);
   
   public static void Log (string str) => System.Console.WriteLine(str);
+
+  public static System.Text.StringBuilder Append(System.Text.StringBuilder b, string s)
+    => b.Append(s);
 }

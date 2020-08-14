@@ -28,9 +28,11 @@ public static class MainClass {
 
     CompileToFile(compile, sourcePath, destPath);
     
-    if (runner.Run(destPath) != expected.Read()) {
+    var actualStr = runner.Run(destPath);
+    var expectedStr = expected.Read();
+    if (actualStr != expectedStr) {
       Console.WriteLine("\x1b[1;31mFail\x1b[m");
-      throw new Exception("Test failed " + source);
+      throw new Exception($"Test failed {source}: expected {expectedStr} but got {actualStr}.");
     } else {
       Console.WriteLine("\x1b[1;32mOK\x1b[m");
     }
