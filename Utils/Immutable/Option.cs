@@ -1,9 +1,8 @@
-/*
 namespace Immutable {
   using System;
 
   public interface Option<out T> {
-    U Match_<U>(Func<T, U> Some, Func<U> None);
+    U Match_<U>(Func<T, U> some, Func<U> none);
   }
 
   public static class Option {
@@ -29,8 +28,11 @@ namespace Immutable {
 
   public static class OptionExtensionMethods {
     public static Option<T> Some<T>(this T value) => Option.Some<T>(value);
-    public static U Match<T, U>(this Option<T> o, Func<T, U> Some, Func<U> None)
-      => o.Match_(Some, None);
- }
+    
+    public static U Match<T, U>(this Option<T> o, Func<T, U> some, Func<U> none)
+      => o.Match_(some, none);
+
+    public static U Match<T, U>(this Option<T> o, Func<T, U> some, U none)
+      => o.Match_(some, () => none);
+  }
 }
-*/

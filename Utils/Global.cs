@@ -8,4 +8,6 @@ public static class Global {
 
   public static System.Text.StringBuilder Append(System.Text.StringBuilder b, string s)
     => b.Append(s);
+
+  public static Immutable.Option<T> None<T>() => Immutable.Option.None<T>();
 }

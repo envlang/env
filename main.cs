@@ -22,7 +22,7 @@ public static class MainClass {
     var sourcePath = tests.Combine(source);
     var expected = sourcePath.DropExtension().Combine(Ext(".o"));
     
-    Console.Write($"Running test {source} ({toolchainName}) ");
+    Console.Write($"\x1b[KRunning test {source} ({toolchainName}) ");
     
     destPath.DirName().Create();
 
@@ -34,7 +34,7 @@ public static class MainClass {
       Console.WriteLine("\x1b[1;31mFail\x1b[m");
       throw new Exception($"Test failed {source}: expected {expectedStr} but got {actualStr}.");
     } else {
-      Console.WriteLine("\x1b[1;32mOK\x1b[m");
+      Console.Write("\x1b[1;32mOK\x1b[m\r");
     }
   }
 
@@ -46,14 +46,20 @@ public static class MainClass {
       .Cons(" js ", Compilers.JS.Compile, Exe("node"))
       .Cons("eval", Evaluator.Evaluate,   Exe("cat"));
 
+    var total = 0;
     foreach (var t in Dir("Tests/").GetFiles("*.e", SearchOption.AllDirectories)) {
       foreach (var compiler in compilers) {
         RunTest(compiler.Item1, compiler.Item2, compiler.Item3, t);
+        total++;
       }
     }
+    Console.WriteLine($"\x1b[K{total} tests run.");
   }
 
   public static void Main (string[] args) {
+    // Refresh code generated at compile-time
+    Generators.Generate();
+
     if (args.Length != 1) {
       Console.WriteLine("Usage: mono main.exe path/to/file.e");
       Console.WriteLine("");

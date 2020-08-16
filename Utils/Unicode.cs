@@ -67,6 +67,7 @@ public static class UnicodeExtensionMethods {
           if (te2.Length == 2 && first2 >= sp && first2 <= cancelTag) {
             te += te2;
             if (first2 == cancelTag) {
+              alreadyMoved = false;
               break;
             }
           } else {
@@ -85,5 +86,18 @@ public static class UnicodeExtensionMethods {
       "",
       Enumerable.Empty<string>()
     );
+  }
+
+  public static UnicodeCategory UnicodeCategory(this string s, int startIndex)
+    => Char.GetUnicodeCategory(s, startIndex);
+
+  public static string Description(this GraphemeCluster gc) {
+    if (gc.endOfFile) {
+      return "end of file";
+    } else if (gc.str == "\"") {
+      return "'\"'";
+    } else {
+      return $"\"{gc.str}\"";
+    }
   }
 }

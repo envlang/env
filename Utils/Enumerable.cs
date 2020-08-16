@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using Immutable;
 
 public static class Collection {
   public static void ForEach<T>(this IEnumerable<T> x, Action<T> f)
@@ -45,9 +46,12 @@ public static class Collection {
   public static IEnumerable<Item<T>> Indexed<T>(this IEnumerable<T> e) {
     long i         = 0L;
     bool first     = true;
-    T    prevX     = default(T); // Dummy
+
+    // These default(…) are written below before being read
+    T    prevX     = default(T);
     long prevI     = default(long);
     bool prevFirst = default(bool);
+
     foreach (var x in e) {
       if (!first) {
         yield return new Item<T>(prevX, prevI, prevFirst, false);
@@ -73,7 +77,7 @@ public static class Collection {
     }
     public bool MoveNext() {
       this.peeked = false;
-      this.previous = default(T);
+      this.previous = default(T); // guarded by peeked
       return this.e.MoveNext();
     }
     public bool Peek() {
@@ -91,7 +95,7 @@ public static class Collection {
     public Peekable(IEnumerable<T> e) {
       this.e = e.GetEnumerator();
       this.peeked = false;
-      this.previous = default(T);
+      this.previous = default(T); // guarded by peeked
     }
   }
 
@@ -110,5 +114,31 @@ public static class Collection {
 
   public static IEnumerable<T> Singleton<T>(this T x) {
     yield return x;
+  }
+
+  public static string Join(this string separator, IEnumerable<string> strings)
+    => String.Join(separator, strings);
+
+  public static Option<T> First<T>(this IEnumerable<T> ie) {
+    var e = ie.GetEnumerator();
+    if (e.MoveNext()) {
+      return e.Current.Some();
+    } else {
+      return Option.None<T>();
+    }
+  }
+
+  public static Option<T> Single<T>(this IEnumerable<T> ie) {
+    var e = ie.GetEnumerator();
+    if (e.MoveNext()) {
+      var value = e.Current;
+      if (e.MoveNext()) {
+        return Option.None<T>();
+      } else {
+        return value.Some();
+      }
+    } else {
+      return Option.None<T>();
+    }
   }
 }
