@@ -42,6 +42,8 @@ namespace Ast {
     public override int GetHashCode() {
         return HashCode.Combine("Int", this.value);
     }
+
+    public override string ToString() => "Int";
   }
 
   public partial class Visitor<T> { public Func<string, T> String { get; set; } }
@@ -62,6 +64,8 @@ namespace Ast {
     public override int GetHashCode() {
         return HashCode.Combine("String", this.value);
     }
+
+    public override string ToString() => "String";
   }
 
 }

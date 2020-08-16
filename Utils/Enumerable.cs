@@ -128,6 +128,17 @@ public static class Collection {
     }
   }
 
+  public static Option<T> First<T>(this IEnumerable<T> ie, Func<T, bool> predicate) {
+    var e = ie.GetEnumerator();
+    bool found = false;
+    while (e.MoveNext()) {
+      if (predicate(e.Current)) {
+        return e.Current.Some();
+      }
+    }
+    return Option.None<T>();
+  }
+
   public static Option<T> Single<T>(this IEnumerable<T> ie) {
     var e = ie.GetEnumerator();
     if (e.MoveNext()) {
@@ -141,4 +152,41 @@ public static class Collection {
       return Option.None<T>();
     }
   }
+
+  public static Option<V> GetValue<K, V>(this Dictionary<K, V> d, K key) {
+    V result = default(V);
+    if (d.TryGetValue(key, out result)) {
+      return result.Some();
+    } else {
+      return Option.None<V>();
+    }
+  }
+
+  public static V GetOrDefault<K, V>(this Dictionary<K, V> d, K key, V defaultValue) {
+    V result = default(V);
+    if (d.TryGetValue(key, out result)) {
+      return result;
+    } else {
+      return defaultValue;
+    }
+  }
+
+  public class DefaultDictionary<TKey, TValue> : Dictionary<TKey, TValue> {
+    public readonly TValue defaultValue;
+    //public readonly Dictionary<TKey, TValue> dictionary;
+    
+    public DefaultDictionary(TValue defaultValue, Dictionary<TKey, TValue> dictionary) : base(dictionary) {
+      this.defaultValue = defaultValue;
+      //this.dictionary = dictionary;
+    }
+    
+    public TValue this[TKey key] {
+      get {
+        return this.GetOrDefault(key, defaultValue);
+      }
+    }
+  }
+
+  public static DefaultDictionary<UKey, UValue> ToDefaultDictionary<T, UKey, UValue>(this IEnumerable<T> e, UValue defaultValue, Func<T, UKey> key, Func<T, UValue> value)
+    => new DefaultDictionary<UKey, UValue>(defaultValue, e.ToDictionary(key, value));
 }

@@ -78,10 +78,9 @@ public static partial class Lexer {
       Rule(S.Space,   '"',                  S.StringOpen, S.String),
 
       Rule(S.Int,     C.DecimalDigitNumber, S.Int),
-      Rule(S.Int,     C.SpaceSeparator,     S.Space), // epsilon
+      Rule(S.Int,     C.SpaceSeparator,     S.Space),
       Rule(S.Int,     new[]{'.',','},       S.Decimal, S.Int),
-      Rule(S.Int,     EOF,                  S.End),   // epsilon
-      Rule(S.Decimal, C.SpaceSeparator,     S.Space), // epsilon
+      Rule(S.Decimal, C.SpaceSeparator,     S.Space),
       
       Rule(S.String,  C.LowercaseLetter,    S.String),
       Rule(S.String,  C.UppercaseLetter,    S.String),
@@ -92,8 +91,22 @@ public static partial class Lexer {
     public static Dictionary<S, List<Rule>> Dict =
       Default
         .GroupBy(r => r.oldState, r => r)
-        .ToDictionary(rs => rs.Key, rs => rs.ToList()) ;
-    // TODO: upon failure, do an epsilon-transition to the whitespace state, and try again.
+        .ToDefaultDictionary(
+          new List<Rule>(),
+          rs => rs.Key,
+          rs => rs.ToList()) ;
+
+    // This adds transitions through an implicit empty whitespace.
+    public static Dictionary<S, List<Rule>> WithEpsilonTransitions =
+      Dict.ToDefaultDictionary(
+        new List<Rule>(),
+        kv => kv.Key,
+        kv => kv.Value.Any(r => true) // r.test(" ")
+              // This is a bit of a hack, the lexer tries the rules in
+              // order so later rules with different results are masked
+              // by former rules
+              ? kv.Value.Concat(Dict[S.Space]).ToList()
+              : kv.Value);
   }
 
   public struct Lexeme {
@@ -125,7 +138,7 @@ public static partial class Lexer {
     return result;
   }
 
-  public static void ParseError(StringBuilder context, IEnumerator<GraphemeCluster> stream, S state, List<Rule> possibleNext, GraphemeCluster gc) {
+  public static Exception ParseError(StringBuilder context, IEnumerator<GraphemeCluster> stream, S state, List<Rule> possibleNext, GraphemeCluster gc) {
     var rest =
       stream
         .SingleUseEnumerable()
@@ -139,7 +152,7 @@ public static partial class Lexer {
                  .First()
                  .Match(some: (x => x.UnicodeCategory(0).ToString()),
                         none: "None (empty string)");
-    throw new Exception(
+    return new Exception(
       $"Unexpected {actual} (Unicode category {cat}) while the lexer was in state {state}: expected one of {expected}{Environment.NewLine}{context}  <--HERE  {rest}"
     );
   }
@@ -155,15 +168,13 @@ public static partial class Lexer {
     while (e.MoveNext()) {
       var c = e.Current;
       context.Append(c.str);
-      List<Rule> possibleNext;
-      if (Rules.Dict.TryGetValue(state, out possibleNext)) {
-        var rule = possibleNext.FirstOrDefault(r => r.test(c));
-        if (rule != null) {
-          yield return Transition(ref state, ref lexeme, c, rule);
-        } else {
-          ParseError(context, e, state, possibleNext, c);
-        }
-      }
+      var possibleNext = Rules.WithEpsilonTransitions
+                           .GetOrDefault(state, new List<Rule>());
+      yield return
+        possibleNext
+          .First(r => r.test(c))
+          .IfSome(rule => Transition(ref state, ref lexeme, c, rule))
+          .ElseThrow(() => ParseError(context, e, state, possibleNext, c));
     }
   }
 

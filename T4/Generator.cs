@@ -90,6 +90,8 @@ public static class Generator {
         o.WriteLine($"        return HashCode.Combine(\"{C}\", this.value);");
       }
       o.WriteLine($"    }}");
+      o.WriteLine("");
+      o.WriteLine($"    public override string ToString() => \"{C}\";");
       o.WriteLine($"  }}");
       o.WriteLine("");
     }

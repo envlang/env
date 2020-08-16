@@ -56,6 +56,8 @@ public static partial class Lexer {
     public override int GetHashCode() {
         return "C".GetHashCode();
     }
+
+    public override string ToString() => "End";
   }
 
   public partial class Visitor<T> { public Func<T> Space { get; set; } }
@@ -70,6 +72,8 @@ public static partial class Lexer {
     public override int GetHashCode() {
         return "C".GetHashCode();
     }
+
+    public override string ToString() => "Space";
   }
 
   public partial class Visitor<T> { public Func<T> Int { get; set; } }
@@ -84,6 +88,8 @@ public static partial class Lexer {
     public override int GetHashCode() {
         return "C".GetHashCode();
     }
+
+    public override string ToString() => "Int";
   }
 
   public partial class Visitor<T> { public Func<T> Decimal { get; set; } }
@@ -98,6 +104,8 @@ public static partial class Lexer {
     public override int GetHashCode() {
         return "C".GetHashCode();
     }
+
+    public override string ToString() => "Decimal";
   }
 
   public partial class Visitor<T> { public Func<T> String { get; set; } }
@@ -112,6 +120,8 @@ public static partial class Lexer {
     public override int GetHashCode() {
         return "C".GetHashCode();
     }
+
+    public override string ToString() => "String";
   }
 
   public partial class Visitor<T> { public Func<T> StringOpen { get; set; } }
@@ -126,6 +136,8 @@ public static partial class Lexer {
     public override int GetHashCode() {
         return "C".GetHashCode();
     }
+
+    public override string ToString() => "StringOpen";
   }
 
   public partial class Visitor<T> { public Func<T> StringClose { get; set; } }
@@ -140,6 +152,8 @@ public static partial class Lexer {
     public override int GetHashCode() {
         return "C".GetHashCode();
     }
+
+    public override string ToString() => "StringClose";
   }
 
 }

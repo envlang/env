@@ -12,6 +12,9 @@ public struct GraphemeCluster {
     this.str = str;
     this.codePoints = codePoints;
   }
+
+  public static implicit operator GraphemeCluster(char c)
+    => new GraphemeCluster(false, c.ToString(), c.ToString().Singleton());
 }
 
 public static class UnicodeExtensionMethods {
