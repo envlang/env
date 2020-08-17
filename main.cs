@@ -57,9 +57,6 @@ public static class MainClass {
   }
 
   public static void Main (string[] args) {
-    // Refresh code generated at compile-time
-    Generators.Generate();
-
     if (args.Length != 1) {
       Console.WriteLine("Usage: mono main.exe path/to/file.e");
       Console.WriteLine("");
