@@ -130,7 +130,6 @@ public static class Collection {
 
   public static Option<T> First<T>(this IEnumerable<T> ie, Func<T, bool> predicate) {
     var e = ie.GetEnumerator();
-    bool found = false;
     while (e.MoveNext()) {
       if (predicate(e.Current)) {
         return e.Current.Some();
@@ -180,7 +179,7 @@ public static class Collection {
       //this.dictionary = dictionary;
     }
     
-    public TValue this[TKey key] {
+    public new TValue this[TKey key] {
       get {
         return this.GetOrDefault(key, defaultValue);
       }
