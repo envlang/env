@@ -12,7 +12,7 @@ main.exe: $(sort $(CS) $(GENERATED))
 %Generated.cs: .%Generator.exe
 	mono $<
 
-.%Generator.exe: %Generator.cs
-	mcs -out:$@ T4/Generator.cs $<
+.%Generator.exe: %Generator.cs T4/Generator.cs
+	mcs -out:$@ $^
 
 
