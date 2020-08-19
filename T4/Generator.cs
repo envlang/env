@@ -11,7 +11,7 @@ public enum Kind {
 public static class Generator {
   public static void WriteVariant(this System.IO.StreamWriter o, string header, string footer, string qualifier, string name, Dictionary<string, string> variant) {
     o.WriteLine($"{header}");
-    o.WriteLine("");
+    o.WriteLine($"");
 
     o.WriteLine($"  /* To match against an instance of {name}, write:");
     o.WriteLine($"     x.Match(");
@@ -21,17 +21,29 @@ public static class Generator {
     o.WriteLine($"  */");
 
     o.WriteLine($"  public abstract class {name} : IEquatable<{name}> {{");
+
+    o.WriteLine($"    public class Visitor<T> {{");
+    foreach (var @case in variant) {
+      var C = @case.Key;
+      var Ty = @case.Value;
+
+      o.WriteLine($"      public Func<{Ty == null ? "" : $"{Ty}, "}T> {C} {{ get; set; }} ");
+    }
+    o.WriteLine($"    }}");
+
     o.WriteLine($"    public abstract T Match_<T>(Visitor<T> c);");
     foreach (var @case in variant) {
       var C = @case.Key;
       var Ty = @case.Value;
-      o.WriteLine($"    public static {name} {C}{Ty == null ? $" = new {C}()" : $"({Ty} value) => new {C}(value)"};");
+      o.WriteLine($"    public static {name} {C}{Ty == null
+                ? $" = new Constructors.{C}()"
+                : $"({Ty} value) => new Constructors.{C}(value)"};");
     }
 
     foreach (var @case in variant) {
       var C = @case.Key;
       var Ty = @case.Value;
-      o.WriteLine($"    public virtual Immutable.Option<{C}> As{C}() => Immutable.Option.None<{C}>();");
+      o.WriteLine($"    public virtual Immutable.Option<Constructors.{C}> As{C}() => Immutable.Option.None<Constructors.{C}>();");
     }
 
     o.WriteLine($"    private string GetTag() {{");
@@ -40,22 +52,16 @@ public static class Generator {
                 $"        {@case.Key}: {@case.Value == null ? "()" : "value"} => \"{@case.Key}\"")));
     o.WriteLine($"      );");
     o.WriteLine($"    }}");
-    o.WriteLine("");
-    o.WriteLine($"    public abstract bool Equals(Object other);");
+    o.WriteLine($"");
+    o.WriteLine($"    public override abstract bool Equals(Object other);");
     o.WriteLine($"    public abstract bool Equals({name} other);");
-    o.WriteLine("");
-    o.WriteLine($"  }}");
-    o.WriteLine("");
+    o.WriteLine($"");
+    o.WriteLine($"    public override abstract int GetHashCode();");
+    o.WriteLine($"     public static class Constructors {{");
 
     foreach (var @case in variant) {
       var C = @case.Key;
       var Ty = @case.Value;
-
-      o.WriteLine(
-        $"  public partial class Visitor<T> {{"
-        + $" public Func<{Ty == null ? "" : $"{Ty}, "}T> {C} {{ get; set; }} "
-        + @"}");
-      o.WriteLine("");
 
       o.WriteLine($"  public sealed class {C} : {name} {{");
       if (Ty != null) {
@@ -88,6 +94,9 @@ public static class Generator {
       o.WriteLine("");
     }
 
+    o.WriteLine($"    }}");
+    o.WriteLine($"  }}");
+    o.WriteLine("");
     o.WriteLine($"}}");
 
     o.WriteLine($"public static class {name}ExtensionMethods {{");
@@ -96,7 +105,7 @@ public static class Generator {
     o.WriteLine(String.Join(",\n", variant.Select(c =>
                 $"      Func<{c.Value == null ? "" : $"{c.Value}, "}T> {c.Key}")));
     o.WriteLine($"    ) {{");
-    o.WriteLine($"    return e.Match_(new {qualifier}Visitor<T> {{");
+    o.WriteLine($"    return e.Match_(new {qualifier}{name}.Visitor<T> {{");
     o.WriteLine(String.Join(",\n", variant.Select(c =>
                 $"      {c.Key} = {c.Key}")));
     o.WriteLine($"    }});");
@@ -107,7 +116,7 @@ public static class Generator {
   public static void WriteRecord(this System.IO.StreamWriter o, string header, string footer, string qualifier, string name, Dictionary<string, string> record) {
     o.WriteLine($"{header}");
     o.WriteLine("");
-    o.WriteLine($"  public class {name} : IEquatable<{name}> {{");
+    o.WriteLine($"  public sealed class {name} : IEquatable<{name}> {{");
     foreach (var @field in record) {
       var F = @field.Key;
       var Ty = @field.Value;
@@ -136,7 +145,7 @@ public static class Generator {
     o.WriteLine($"    public bool Equals({name} other)");
     o.WriteLine($"      => Equality.Equatable<{name}>(this, other);");
     o.WriteLine($"    public override int GetHashCode()");
-    o.WriteLine($"      => HashCode.Combine(\"{name}\",");
+    o.WriteLine($"      => Equality.HashCode(\"{name}\",");
     o.WriteLine(String.Join(",\n", record.Select(@field =>
                 $"          this.{@field.Key}")));
     o.WriteLine($"        );");

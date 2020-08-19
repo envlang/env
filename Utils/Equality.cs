@@ -56,4 +56,20 @@ public static class Equality {
       return ((Object)a).Equals(b);
     }
   }
+
+  public static int HashCode(Object o1) => System.HashCode.Combine(o1);
+  public static int HashCode(Object o1, Object o2) => System.HashCode.Combine(o1, o2);
+  public static int HashCode(Object o1, Object o2, Object o3) => System.HashCode.Combine(o1, o2, o3);
+  public static int HashCode(Object o1, Object o2, Object o3, Object o4) => System.HashCode.Combine(o1, o2, o3, o4);
+  public static int HashCode(Object o1, Object o2, Object o3, Object o4, Object o5) => System.HashCode.Combine(o1, o2, o3, o4, o5);
+  public static int HashCode(Object o1, Object o2, Object o3, Object o4, Object o5, Object o6) => System.HashCode.Combine(o1, o2, o3, o4, o5, o6);
+  public static int HashCode(Object o1, Object o2, Object o3, Object o4, Object o5, Object o6, Object o7) => System.HashCode.Combine(o1, o2, o3, o4, o5, o6, o7);
+  public static int HashCode(Object o1, Object o2, Object o3, Object o4, Object o5, Object o6, Object o7, Object o8) => System.HashCode.Combine(o1, o2, o3, o4, o5, o6, o7, o8);
+
+  public static int HashCode(Object o1, Object o2, Object o3, Object o4, Object o5, Object o6, Object o7, Object o8, params Object[] objects) {
+    var hash = System.HashCode.Combine(o1, o2, o3, o4, o5, o6, o7, o8);foreach (var o in objects) {
+      hash = System.HashCode.Combine(hash, o);
+    }
+    return hash;
+  }
 }

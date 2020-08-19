@@ -4,9 +4,27 @@ using System.Collections.Generic;
 using System.Linq;
 using Immutable;
 using S = Lexer.S;
+using Lexeme = Lexer.Lexeme;
 using static Global;
 
-public static class Parser {
+public static partial class Parser {
+  public class PrecedenceDAG: Dictionary<string, DAGNode> {};
+
+  public static PrecedenceDAG DefaultPrecedenceDAG = new PrecedenceDAG();
+
+  public static PrecedenceDAG  With(PrecedenceDAG precedenceDAG, Operator @operator) {
+
+    throw new NotImplementedException();
+  }
+
+  public static void DagToGrammar(DAGNode precedenceDAG) {
+    
+  }
+
+  public static void RecursiveDescent(IEnumerable<Lexeme> e) {
+
+  }
+
   public static Ast.Expr Parse(string source) {
     return Lexer.Lex(source)
       .SelectMany(lexeme =>
@@ -21,7 +39,8 @@ public static class Parser {
         )
       )
       .Single()
-      .ElseThrow(() => new Exception("empty file or more than one expression in file."));
+      .ElseThrow(() => new ParserErrorException(
+        "empty file or more than one expression in file."));
   }
 }
 

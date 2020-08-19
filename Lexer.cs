@@ -122,7 +122,7 @@ public static partial class Lexer {
     return result;
   }
 
-  public static Exception ParseError(StringBuilder context, IEnumerator<GraphemeCluster> stream, S state, List<Rule> possibleNext, GraphemeCluster gc) {
+  public static ParserErrorException ParserError(StringBuilder context, IEnumerator<GraphemeCluster> stream, S state, List<Rule> possibleNext, GraphemeCluster gc) {
     var rest =
       stream
         .SingleUseEnumerable()
@@ -136,7 +136,7 @@ public static partial class Lexer {
                  .First()
                  .Match(some: (x => x.UnicodeCategory(0).ToString()),
                         none: "None (empty string)");
-    return new Exception(
+    return new ParserErrorException(
       $"Unexpected {actual} (Unicode category {cat}) while the lexer was in state {state}: expected one of {expected}{Environment.NewLine}{context}  <--HERE  {rest}"
     );
   }
@@ -158,7 +158,7 @@ public static partial class Lexer {
         possibleNext
           .First(r => r.test(c))
           .IfSome(rule => Transition(ref state, ref lexeme, c, rule))
-          .ElseThrow(() => ParseError(context, e, state, possibleNext, c));
+          .ElseThrow(() => ParserError(context, e, state, possibleNext, c));
     }
   }
 

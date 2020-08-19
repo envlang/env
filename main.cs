@@ -32,7 +32,7 @@ public static class MainClass {
     var expectedStr = expected.Read();
     if (actualStr != expectedStr) {
       Console.WriteLine("\x1b[1;31mFail\x1b[m");
-      throw new Exception($"Test failed {source}: expected {expectedStr} but got {actualStr}.");
+      throw new TestFailedException($"{source}: expected {expectedStr} but got {actualStr}.");
     } else {
       Console.Write("\x1b[1;32mOK\x1b[m\r");
     }
@@ -57,26 +57,32 @@ public static class MainClass {
   }
 
   public static void Main (string[] args) {
-    if (args.Length != 1) {
-      Console.WriteLine("Usage: mono main.exe path/to/file.e");
+    try {
+      if (args.Length != 1) {
+        Console.WriteLine("Usage: mono main.exe path/to/file.e");
+        Console.WriteLine("");
+        Console.WriteLine("Language syntax:");
+        Console.WriteLine("");
+        Console.WriteLine("  Expression =");
+        Console.WriteLine("    Int");
+        Console.WriteLine("  | String");
+        Console.WriteLine("  | Variable");
+        Console.WriteLine("  | Pattern \"->\" Expression");
+        Console.WriteLine("");
+        Console.WriteLine("I'll run the tests for you in the meanwhile.");
+        Console.WriteLine("");
+        RunTests();
+      } else {
+        var source = args[0].File();
+        var destPrefix = source.DropExtension();
+        CompileToFile(Compilers.JS.Compile, source, destPrefix.Combine(Ext(".js")));
+        CompileToFile(Evaluator.Evaluate,   source, destPrefix.Combine(Ext(".txt")));
+        Console.Write(destPrefix.Combine(Ext(".txt")).Read());
+      }
+    } catch (UserErrorException e) {
       Console.WriteLine("");
-      Console.WriteLine("Language syntax:");
-      Console.WriteLine("");
-      Console.WriteLine("  Expression =");
-      Console.WriteLine("    Int");
-      Console.WriteLine("  | String");
-      Console.WriteLine("  | Variable");
-      Console.WriteLine("  | Pattern \"->\" Expression");
-      Console.WriteLine("");
-      Console.WriteLine("I'll run the tests for you in the meanwhile.");
-      Console.WriteLine("");
-      RunTests();
-    } else {
-      var source = args[0].File();
-      var destPrefix = source.DropExtension();
-      CompileToFile(Compilers.JS.Compile, source, destPrefix.Combine(Ext(".js")));
-      CompileToFile(Evaluator.Evaluate,   source, destPrefix.Combine(Ext(".txt")));
-      Console.Write(destPrefix.Combine(Ext(".txt")).Read());
+      Console.WriteLine(e.Message);
+      Environment.Exit(1);
     }
   }
 }
