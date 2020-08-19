@@ -152,7 +152,7 @@ public static class Collection {
     }
   }
 
-  public static Option<V> GetValue<K, V>(this Dictionary<K, V> d, K key) {
+  public static Option<V> GetValue<K, V>(this ImmutableDictionary<K, V> d, K key) {
     V result = default(V);
     if (d.TryGetValue(key, out result)) {
       return result.Some();
@@ -161,7 +161,7 @@ public static class Collection {
     }
   }
 
-  public static V GetOrDefault<K, V>(this Dictionary<K, V> d, K key, V defaultValue) {
+  public static V GetOrDefault<K, V>(this ImmutableDictionary<K, V> d, K key, V defaultValue) {
     V result = default(V);
     if (d.TryGetValue(key, out result)) {
       return result;
@@ -169,23 +169,4 @@ public static class Collection {
       return defaultValue;
     }
   }
-
-  public class DefaultDictionary<TKey, TValue> : Dictionary<TKey, TValue> {
-    public readonly TValue defaultValue;
-    //public readonly Dictionary<TKey, TValue> dictionary;
-    
-    public DefaultDictionary(TValue defaultValue, Dictionary<TKey, TValue> dictionary) : base(dictionary) {
-      this.defaultValue = defaultValue;
-      //this.dictionary = dictionary;
-    }
-    
-    public new TValue this[TKey key] {
-      get {
-        return this.GetOrDefault(key, defaultValue);
-      }
-    }
-  }
-
-  public static DefaultDictionary<UKey, UValue> ToDefaultDictionary<T, UKey, UValue>(this IEnumerable<T> e, UValue defaultValue, Func<T, UKey> key, Func<T, UValue> value)
-    => new DefaultDictionary<UKey, UValue>(defaultValue, e.ToDictionary(key, value));
 }

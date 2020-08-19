@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Mutable = System.Collections.Generic;
 
 public static class Func {
   // supply 1 argument to function of 2 arguments
@@ -29,7 +30,7 @@ public static class Func {
   }
 
   public static Func<A, B> Memoize<A, B>(this Func<A, B> f) where A : IEquatable<A> {
-    var d = new Dictionary<A, B>();
+    var d = new Mutable.Dictionary<A, B>();
     return a => {
       if (d.TryGetValue(a, out var b)) {
         return b;

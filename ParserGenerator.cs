@@ -24,21 +24,18 @@ public static class ParserGenerator {
           Case("Terminal")),
 
         Record("Operator",
-          Field("List<S>", "Parts"),
-          Field("List<string>", "Holes")),
-
-        Record("Closed",
-          Field("S", "openSymbol"),
-          Field("S", "closedSymbol")),
+          Field("Fixity", "fixity"),
+          Field("List<S>", "parts"),
+          Field("List<string>", "holes")),
 
         Record("DAGNode",
-          Field("List<S>", "infixLeftAssociative"),
-          Field("List<S>", "infixRightAssociative"),
-          Field("List<S>", "infixNonAssociative"),
-          Field("List<S>", "prefix"),
-          Field("List<S>", "postfix"),
-          Field("List<Closed>", "closed"),
-          Field("List<S>", "terminal"),
-          Field("List<string>", "successors"))));
+          Field("List<Operator>", "infixLeftAssociative"),
+          Field("List<Operator>", "infixRightAssociative"),
+          Field("List<Operator>", "infixNonAssociative"),
+          Field("List<Operator>", "prefix"),
+          Field("List<Operator>", "postfix"),
+          Field("List<Operator>", "closed"),
+          Field("List<Operator>", "terminal"),
+          Field("List<string>", "successorNodes"))));
   }
 }

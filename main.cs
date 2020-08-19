@@ -81,7 +81,7 @@ public static class MainClass {
       }
     } catch (UserErrorException e) {
       Console.WriteLine("");
-      Console.WriteLine(e.Message);
+      Console.WriteLine($"\x1b[1;33m{e.Message}\x1b[m\n");
       Environment.Exit(1);
     }
   }

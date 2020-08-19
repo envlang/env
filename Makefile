@@ -7,7 +7,7 @@ run: main.exe
 	mono main.exe
 
 main.exe: $(sort $(CS) $(GENERATED))
-	mcs -out:$@ $^
+	mcs -out:$@ /reference:/usr/lib/mono/fsharp/FSharp.Core.dll $^
 
 %Generated.cs: .%Generator.exe
 	mono $<

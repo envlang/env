@@ -16,7 +16,7 @@ public static class Generator {
     o.WriteLine($"  /* To match against an instance of {name}, write:");
     o.WriteLine($"     x.Match(");
     o.WriteLine(String.Join(",\n", variant.Select(@case => 
-                $"       {@case.Key}: {@case.Value == null ? "()" : "value"} => throw new NotImplementedYetException(),")));
+                $"       {@case.Key}: {@case.Value == null ? "()" : "value"} => throw new NotImplementedYetException()")));
     o.WriteLine($"     )");
     o.WriteLine($"  */");
 
@@ -149,6 +149,16 @@ public static class Generator {
     o.WriteLine(String.Join(",\n", record.Select(@field =>
                 $"          this.{@field.Key}")));
     o.WriteLine($"        );");
+    foreach (var @field in record) {
+      var F = @field.Key;
+      var noAtF = F.StartsWith("@") ? F.Substring(1) : F;
+      var caseF = Char.ToUpper(noAtF[0]) + noAtF.Substring(1);
+      var Ty = @field.Value;
+      o.Write($"    public {name} With{caseF}({Ty} {F}) => new {name}(");
+      o.Write(String.Join(", ", record.Select(@f => $"{f.Key}: {f.Key}")));
+      o.WriteLine(");");
+    }
+
     o.WriteLine($"  }}");
     o.WriteLine($"{footer}");
   }

@@ -72,7 +72,7 @@ public static partial class Lexer {
       Rule(S.String,  '"',                  S.StringClose, S.Space),
     };
 
-    public static Dictionary<S, List<Rule>> Dict =
+    public static DefaultDictionary<S, List<Rule>> Dict =
       Default
         .GroupBy(r => r.oldState, r => r)
         .ToDefaultDictionary(
@@ -81,7 +81,7 @@ public static partial class Lexer {
           rs => rs.ToList()) ;
 
     // This adds transitions through an implicit empty whitespace.
-    public static Dictionary<S, List<Rule>> WithEpsilonTransitions =
+    public static DefaultDictionary<S, List<Rule>> WithEpsilonTransitions =
       Dict.ToDefaultDictionary(
         new List<Rule>(),
         kv => kv.Key,
