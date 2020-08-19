@@ -20,7 +20,7 @@ public static class Generator {
     o.WriteLine($"     )");
     o.WriteLine($"  */");
 
-    o.WriteLine($"  public abstract class {name} {{");
+    o.WriteLine($"  public abstract class {name} : IEquatable<{name}> {{");
     o.WriteLine($"    public abstract T Match_<T>(Visitor<T> c);");
     foreach (var @case in variant) {
       var C = @case.Key;
@@ -40,18 +40,10 @@ public static class Generator {
                 $"        {@case.Key}: {@case.Value == null ? "()" : "value"} => \"{@case.Key}\"")));
     o.WriteLine($"      );");
     o.WriteLine($"    }}");
-
-/*
-    public abstract override bool Equals(object other) {
-      if (object.ReferenceEquals(other, null) || !this.GetType().Equals(other.GetType())) {
-        return false;
-      } else {
-        var cast = (S)other;
-        return    String.Equal(this.GetTag(), other.GetTag)
-               && 
-    }
-*/
-
+    o.WriteLine("");
+    o.WriteLine($"    public abstract bool Equals(Object other);");
+    o.WriteLine($"    public abstract bool Equals({name} other);");
+    o.WriteLine("");
     o.WriteLine($"  }}");
     o.WriteLine("");
 
@@ -72,25 +64,24 @@ public static class Generator {
       o.WriteLine($"    public {C}({Ty == null ? "" : $"{Ty} value"}) {{ {Ty == null ? "" : $"this.value = value; "}}}");
       o.WriteLine($"    public override T Match_<T>(Visitor<T> c) => c.{C}({Ty == null ? "" : "value"});");
       o.WriteLine($"    public override Immutable.Option<{C}> As{C}() => Immutable.Option.Some<{C}>(this);");
-      o.WriteLine($"    public override bool Equals(object other) {{");
+      o.WriteLine($"    public static bool operator ==({C} a, {C} b)");
+      o.WriteLine($"      => Equality.Operator(a, b);");
+      o.WriteLine($"    public static bool operator !=({C} a, {C} b)");
+      o.WriteLine($"      => !(a == b);");
+      o.WriteLine($"    public override bool Equals(object other)");
       if (Ty == null) {
-        o.WriteLine($"        return (other is {C});");
+        o.WriteLine($"      => Equality.Untyped<{C}>(this, other, x => x as {C});");
       } else {
-        o.WriteLine($"      var cast = other as {C};");
-        o.WriteLine($"      if (Object.ReferenceEquals(cast, null)) {{");
-        o.WriteLine($"        return false;");
-        o.WriteLine($"      }} else {{");
-        o.WriteLine($"        return Equality.Field<{C}, {Ty}>(this, cast, x => x.value, (x, y) => ((Object)x).Equals(y));");
-        o.WriteLine($"      }}");
+        o.WriteLine($"      => Equality.Untyped<{C}>(this, other, x => x as {C}, x => x.value);");
       }
-      o.WriteLine($"    }}");
-      o.WriteLine($"    public override int GetHashCode() {{");
+      o.WriteLine($"    public override bool Equals({name} other)");
+      o.WriteLine($"      => Equality.Equatable<{name}>(this, other);");
+      o.WriteLine($"    public override int GetHashCode()");
       if (Ty == null) {
-        o.WriteLine($"        return \"C\".GetHashCode();");
+        o.WriteLine($"      => HashCode.Combine(\"{C}\");");
       } else {
-        o.WriteLine($"        return HashCode.Combine(\"{C}\", this.value);");
+        o.WriteLine($"      => HashCode.Combine(\"{C}\", this.value);");
       }
-      o.WriteLine($"    }}");
       o.WriteLine("");
       o.WriteLine($"    public override string ToString() => \"{C}\";");
       o.WriteLine($"  }}");
@@ -116,7 +107,7 @@ public static class Generator {
   public static void WriteRecord(this System.IO.StreamWriter o, string header, string footer, string qualifier, string name, Dictionary<string, string> record) {
     o.WriteLine($"{header}");
     o.WriteLine("");
-    o.WriteLine($"  public class {name} {{");
+    o.WriteLine($"  public class {name} : IEquatable<{name}> {{");
     foreach (var @field in record) {
       var F = @field.Key;
       var Ty = @field.Value;
@@ -132,16 +123,34 @@ public static class Generator {
       o.WriteLine($"    this.{F} = {F};");
     }
     o.WriteLine($"    }}");
+    o.WriteLine($"");
+    o.WriteLine($"    public static bool operator ==({name} a, {name} b)");
+    o.WriteLine($"      => Equality.Operator(a, b);");
+    o.WriteLine($"    public static bool operator !=({name} a, {name} b)");
+    o.WriteLine($"      => !(a == b);");
+    o.WriteLine($"    public override bool Equals(object other)");
+    o.WriteLine($"      => Equality.Untyped<{name}>(this, other, x => x as {name},");
+    o.WriteLine(String.Join(",\n", record.Select(@field =>
+                $"          x => x.{@field.Key}")));
+    o.WriteLine($"        );");
+    o.WriteLine($"    public bool Equals({name} other)");
+    o.WriteLine($"      => Equality.Equatable<{name}>(this, other);");
+    o.WriteLine($"    public override int GetHashCode()");
+    o.WriteLine($"      => HashCode.Combine(\"{name}\",");
+    o.WriteLine(String.Join(",\n", record.Select(@field =>
+                $"          this.{@field.Key}")));
+    o.WriteLine($"        );");
     o.WriteLine($"  }}");
     o.WriteLine($"{footer}");
   }
 
-  public static void Generate(string outputFile, string header, string footer, string qualifier, Dictionary<string, Tuple<Kind, Dictionary<string, string>>> types) {
+  public static void Generate(string outputFile, string singleHeader, string header, string footer, string qualifier, Dictionary<string, Tuple<Kind, Dictionary<string, string>>> types) {
     using (var o = new System.IO.StreamWriter(outputFile)) {
       o.WriteLine("// This file was generated by Generator.cs");
       o.WriteLine("");
 
       o.WriteLine("using System;");
+      o.WriteLine($"{singleHeader}");
       o.WriteLine("");
       foreach (var type in types) {
         var name = type.Key;
@@ -155,6 +164,7 @@ public static class Generator {
             o.WriteVariant(header, footer, qualifier, name, @components);
             break;
         }
+        o.WriteLine("");
       }
     }
   }
@@ -177,10 +187,10 @@ public static class Generator {
            Kind.Variant,
            cases.ToDictionary(t => t.Item1, t => t.Item2)));
 
-  public static Tuple<string, string> Field(string name, string type)
+  public static Tuple<string, string> Field(string type, string name)
     => new Tuple<string, string>(name, type);
 
-  public static Tuple<string, string> Case(string name, string type)
+  public static Tuple<string, string> Case(string type, string name)
     => new Tuple<string, string>(name, type);
 
   public static Tuple<string, string> Case(string name)

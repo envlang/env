@@ -8,22 +8,6 @@ using C = System.Globalization.UnicodeCategory;
 using static Global;
 
 public static partial class Lexer {
-  public class Rule {
-    public readonly S oldState;
-    public readonly string description;
-    public readonly Func<GraphemeCluster, bool> test;
-    public readonly S throughState;
-    public readonly S newState;
-
-    public Rule(S oldState, string description, Func<GraphemeCluster, bool> test, S throughState, S newState) {
-      this.oldState = oldState;
-      this.description = description;
-      this.test = test;
-      this.throughState = throughState;
-      this.newState = newState;
-    }
-  }
-
   public sealed class EOF { }
 
   public static class Rules {
