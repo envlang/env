@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 public static class Func {
@@ -25,5 +26,18 @@ public static class Func {
   // break down function of 3 arguments to require 2 successive 1-argument calls
   public static Func<A,Func<B,Func<C,D>>> Curry<A,B,C,D>(this Func<A,B,C,D> f) {
     return a => b => c => f(a, b, c);
+  }
+
+  public static Func<A, B> Memoize<A, B>(this Func<A, B> f) where A : IEquatable<A> {
+    var d = new Dictionary<A, B>();
+    return a => {
+      if (d.TryGetValue(a, out var b)) {
+        return b;
+      } else {
+        var calcB = f(a);
+        d.Add(a, calcB);
+        return calcB;
+      }
+    };
   }
 }
