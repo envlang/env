@@ -8,32 +8,44 @@ using S = Lexer.S;
 using Lexeme = Lexer.Lexeme;
 using static Global;
 
-using PrecedenceDAG = System.Collections.Immutable.ImmutableDictionary<string, Parser.DAGNode>;
+using PrecedenceDAG = ImmutableDefaultDictionary<string, Parser.DAGNode>;
 
 public static partial class Parser {
-  public static PrecedenceDAG DefaultPrecedenceDAG = new PrecedenceDAG();
+  public static DAGNode EmptyDAGNode = new DAGNode(
+       infixLeftAssociative: ImmutableList<Operator>.Empty,
+       prefix:               ImmutableList<Operator>.Empty,
+       closed:               ImmutableList<Operator>.Empty,
+       terminal: ImmutableList<Operator>.Empty,
+       infixRightAssociative: ImmutableList<Operator>.Empty,
+       infixNonAssociative: ImmutableList<Operator>.Empty,
+       postfix: ImmutableList<Operator>.Empty,
+       successorNodes: ImmutableList<string>.Empty
+     );
 
-  public static DAGNode With(DAGNode node, Operator @operator) {
-    var newNode = @operator.fixity.Match(
-      Closed: () => node.lens.closed.Cons(@operator),
-      InfixLeftAssociative: () => node.lens.infixLeftAssociative.Cons(@operator),
-      InfixRightAssociative: () => node.lens.infixRightAssociative.Cons(@operator),
-      InfixNonAssociative: () => node.lens.infixNonAssociative.Cons(@operator),
-      Prefix: () => node.lens.prefix.Cons(@operator),
-      Postfix: () => node.lens.postfix.Cons(@operator),
-      Terminal: () => node.lens.terminal.Cons(@operator)
+  public static PrecedenceDAG DefaultPrecedenceDAG
+    = new PrecedenceDAG(EmptyDAGNode);
+
+  public static Whole With<Whole>(this ILens<DAGNode, Whole> node, Operator @operator) {
+    return @operator.fixity.Match(
+      Closed:
+        () => node.Closed().Cons(@operator),
+      InfixLeftAssociative:
+        () => node.InfixLeftAssociative().Cons(@operator),
+      InfixRightAssociative:
+        () => node.InfixRightAssociative().Cons(@operator),
+      InfixNonAssociative:
+        () => node.InfixNonAssociative().Cons(@operator),
+      Prefix:
+        () => node.Prefix().Cons(@operator),
+      Postfix:
+        () => node.Postfix().Cons(@operator),
+      Terminal:
+        () => node.Terminal().Cons(@operator)
     );
-    // op.fixity, parts, holes
-    throw new NotImplementedException();
   }
 
-  public static PrecedenceDAG With(PrecedenceDAG precedenceDAG, Operator @operator) {
-    precedenceDAG.lens(@operator.precedenceGroup);
-    /*precedenceDAG.update(
-      dagNode => dagNode.Add(@operator)
-    );*/
-    throw new NotImplementedException();
-  }
+  public static PrecedenceDAG With(PrecedenceDAG precedenceDAG, Operator @operator)
+    => precedenceDAG.lens()[@operator.precedenceGroup].With(@operator);
 
   public static void DagToGrammar(DAGNode precedenceDAG) {
     

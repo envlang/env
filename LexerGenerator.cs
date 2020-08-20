@@ -18,10 +18,10 @@ public static class LexerGenerator {
           Case("StringOpen"),
           Case("StringClose")),
         Record("Rule",
-          Field("S", "oldState"),
+          Field("Lexer.S", "oldState"),
           Field("string", "description"),
           Field("Func<GraphemeCluster, bool>", "test"),
-          Field("S", "throughState"),
-          Field("S", "newState"))));
+          Field("Lexer.S", "throughState"),
+          Field("Lexer.S", "newState"))));
   }
 }

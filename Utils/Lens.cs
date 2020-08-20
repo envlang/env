@@ -1,9 +1,8 @@
-// Code quality of this file: low.
-
 using System;
 using System.Collections.Immutable;
 
 public interface ILens<Hole, Whole> {
+  Hole value { get; }
   Whole Update(Func<Hole, Hole> update);
 }
 
@@ -13,12 +12,6 @@ public static class LensExtensionMethods {
 
   public static Whole Cons<T, Whole>(this ILens<ImmutableList<T>, Whole> lens, T value)
     => lens.Update(oldHole => oldHole.Cons(value));
-
-  public static ImmutableListLens<T, Whole>
-    ChainLens<T, Whole>(
-      this ImmutableList<T> hole,
-      System.Func<ImmutableList<T>, Whole> wrap)
-    => new ImmutableListLens<T, Whole>(wrap: wrap, oldHole: hole);
 
   public static ILens<string, Whole> ChainLens<Whole>(this string hole, System.Func<string, Whole> wrap) => new LeafLens<string, Whole>(wrap: wrap, oldHole: hole);
 

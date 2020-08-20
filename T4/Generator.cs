@@ -19,6 +19,19 @@ public static class Generator {
 
       w("using System;");
       w($"{singleHeader}");
+      foreach (var type in types) {
+        var name = type.Key;
+        var kind = type.Value.Item1;
+        var components = type.Value.Item2;
+        switch (kind) {
+          case Kind.Record:
+            w.RecordUsing(header, footer, qualifier, name, @components);
+            break;
+          case Kind.Variant:
+            w.VariantUsing(header, footer, qualifier, name, @components);
+            break;
+        }
+      }
       w("");
       foreach (var type in types) {
         var name = type.Key;

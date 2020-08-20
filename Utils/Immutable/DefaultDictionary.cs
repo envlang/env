@@ -7,6 +7,11 @@ public class ImmutableDefaultDictionary<TKey, TValue> : IEnumerable<KeyValuePair
   public readonly TValue defaultValue;
   public readonly ImmutableDictionary<TKey, TValue> dictionary;
   
+  public ImmutableDefaultDictionary(TValue defaultValue) {
+    this.defaultValue = defaultValue;
+    this.dictionary = ImmutableDictionary<TKey, TValue>.Empty;
+  }
+
   public ImmutableDefaultDictionary(TValue defaultValue, ImmutableDictionary<TKey, TValue> dictionary) {
     this.defaultValue = defaultValue;
     this.dictionary = dictionary;
@@ -16,8 +21,14 @@ public class ImmutableDefaultDictionary<TKey, TValue> : IEnumerable<KeyValuePair
     get => dictionary.GetOrDefault(key, defaultValue);
   }
 
-  public ImmutableDefaultDictionary<TKey, TValue> With(TKey key, TValue value)
+  public ImmutableDefaultDictionary<TKey, TValue> Add(TKey key, TValue value)
     => new ImmutableDefaultDictionary<TKey, TValue>(defaultValue, dictionary.Add(key, value));
+
+  public ImmutableDefaultDictionary<TKey, TValue> SetItem(TKey key, TValue value)
+    => new ImmutableDefaultDictionary<TKey, TValue>(defaultValue, dictionary.SetItem(key, value));
+
+  public ImmutableDefaultDictionary<TKey, TValue> Remove(TKey key)
+    => new ImmutableDefaultDictionary<TKey, TValue>(defaultValue, dictionary.Remove(key));
 
   public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => dictionary.GetEnumerator();
 

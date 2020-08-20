@@ -6,6 +6,15 @@ using System.Linq;
 using Record = System.Collections.Immutable.ImmutableDictionary<string, string>;
 
 public static class RecordGenerator {
+  private static void NewExampleComment(this Action<string> w, string qualifier, string name, Record record) {
+    w($"  /* To create an instance of {name}, write:");
+    w($"     new {name}(");
+    w(String.Join(",\n", record.Select(@field => 
+                $"       {@field.Key}: new {@field.Value}(…)")));
+    w($"     )");
+    w($"  */");
+  }
+
   private static void Fields(this Action<string> w, string qualifier, string name, Record record) {
     foreach (var @field in record) {
       var F = @field.Key;
@@ -69,7 +78,9 @@ public static class RecordGenerator {
   private static void Lenses(this Action<string> w, string qualifier, string name, Record record) {
     w($"    public sealed class Lens<Whole> : ILens<{name}, Whole> {{");
     w($"      public readonly System.Func<{name}, Whole> wrap;");
-    w($"      public readonly {name} oldHole;");
+    w($"      private readonly {name} oldHole;");
+    w($"");
+    w($"      public {name} value {{ get => oldHole; }}");
     w($"");
     w($"      public Lens(System.Func<{name}, Whole> wrap, {name} oldHole) {{");
     w($"        this.wrap = wrap;");
@@ -84,7 +95,8 @@ public static class RecordGenerator {
       w($"        => oldHole.{F}.ChainLens(");
       w($"          value => wrap(oldHole.With{caseF}(value)));");
     }
-    w($"      public Whole Update(Func<{name}, {name}> update) => wrap(update(oldHole));");
+    w($"      public Whole Update(Func<{name}, {name}> update)");
+    w($"        => wrap(update(oldHole));");
     w($"    }}");
   }
 
@@ -106,10 +118,42 @@ public static class RecordGenerator {
     w($"  }}");
   }
 
+  private static void LensExtensionMethods(this Action<string> w, string qualifier, string name, Record record) {
+    w($"    public static class {name}LensExtensionMethods {{");
+    foreach (var @field in record) {
+      var F = @field.Key;
+      var noAtF = F.StartsWith("@") ? F.Substring(1) : F;
+      var caseF = Char.ToUpper(noAtF[0]) + noAtF.Substring(1);
+      var Ty = @field.Value;
+      // same as {name}.Lens but as extension mehtods (should
+      // be extension properties once C# supports those) to
+      // be applied to instances of ILens<{name}, Whole>
+      w($"      public static ILens<{Ty}, Whole>");
+      w($"        {caseF}<Whole>(");
+      w($"          this ILens<{qualifier}{name}, Whole> self)");
+      w($"        => self.value.{F}.ChainLens(");
+      w($"          value => self.Update(oldHole => oldHole.With{caseF}(value)));");
+    }
+    w($"    }}");
+  }
+
   public static void Record(this Action<string> w, string header, string footer, string qualifier, string name, Record record) {
     w($"{header}");
     w("");
+    w.NewExampleComment(qualifier, name, record);
+    w("");
     w.RecordClass(qualifier, name, record);
     w($"{footer}");
+    w.LensExtensionMethods(qualifier, name, record);
+  }
+
+  private static void QualifierAliases(this Action<string> w, string qualifier, string name, Record record) {
+    if (qualifier != "") {
+      w($"using {name} = {qualifier}{name};");
+    }
+  }
+
+  public static void RecordUsing(this Action<string> w, string header, string footer, string qualifier, string name, Record record) {
+    w.QualifierAliases(qualifier, name, record);
   }
 }

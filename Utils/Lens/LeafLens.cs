@@ -5,7 +5,9 @@ using System.Collections.Immutable;
 // interesting to further focus.
 public sealed class LeafLens<T, Whole> : ILens<T, Whole> {
   public readonly System.Func<T, Whole> wrap;
-  public readonly T oldHole;
+  private readonly T oldHole;
+
+  public T value { get => oldHole; }
 
   public LeafLens(System.Func<T, Whole> wrap, T oldHole) {
     this.wrap = wrap;

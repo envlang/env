@@ -185,8 +185,20 @@ public static class VariantGenerator {
     w($"{header}");
     w($"");
     w.MatchExampleComment(qualifier, name, variant);
+    w($"");
     w.VariantClass(qualifier, name, variant);
+    w($"");
     w.ExtensionMethods(qualifier, name, variant);
     w($"{footer}");
+  }
+
+  private static void QualifierAliases(this Action<string> w, string qualifier, string name, Variant variant) {
+    if (qualifier != "") {
+      w($"using {name} = {qualifier}{name};");
+    }
+  }
+
+  public static void VariantUsing(this Action<string> w, string header, string footer, string qualifier, string name, Variant variant) {
+    w.QualifierAliases(qualifier, name, variant);
   }
 }
