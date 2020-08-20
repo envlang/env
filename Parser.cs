@@ -13,20 +13,20 @@ public static partial class Parser {
   public static PrecedenceDAG DefaultPrecedenceDAG = new PrecedenceDAG();
 
   public static DAGNode With(DAGNode node, Operator op) {
-/*    var newOp = op.fixity.Match(
-       Closed: () => node.WithClosed(op),
-       InfixLeftAssociative: () => node.WithInfixLeftAssociative(op),
-       InfixRightAssociative: () => node.WithInfixRightAssociative(op),
-       InfixNonAssociative: () => node.WithInfixNonAssociative(op),
-       Prefix: () => node.WithPrefix(op),
-       Postfix: () => node.WithPostFix(op),
-       Terminal: () => node.WithTerminal(op)
-    );*/
+    var newOp = op.fixity.Match(
+      Closed: () => node.lens.closed.Cons(op),
+      InfixLeftAssociative: () => node.lens.infixLeftAssociative.Cons(op),
+      InfixRightAssociative: () => node.lens.infixRightAssociative.Cons(op),
+      InfixNonAssociative: () => node.lens.infixNonAssociative.Cons(op),
+      Prefix: () => node.lens.prefix.Cons(op),
+      Postfix: () => node.lens.postfix.Cons(op),
+      Terminal: () => node.lens.terminal.Cons(op)
+    );
     // op.fixity, parts, holes
     throw new NotImplementedException();
   }
 
-  public static PrecedenceDAG  With(PrecedenceDAG precedenceDAG, Operator @operator) {
+  public static PrecedenceDAG With(PrecedenceDAG precedenceDAG, Operator @operator) {
     /*precedenceDAG.update(
       dagNode => dagNode.Add(@operator)
     );*/

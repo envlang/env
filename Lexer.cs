@@ -14,45 +14,47 @@ public static partial class Lexer {
   public static class Rules {
     private static Rule Rule(S oldState, UnicodeCategory cat, S throughState, S newState = null)
       => new Rule(
-           oldState,
-           cat.ToString(),
-           c => c.codePoints
-                 .First()
-                 .Match(some: (x => x.UnicodeCategory(0) == cat),
-                        none: false),
-           throughState,
-           newState ?? throughState);
+           oldState: oldState,
+           description: cat.ToString(),
+           test: c => c.codePoints
+                       .First()
+                      .Match(some: (x => x.UnicodeCategory(0) == cat),
+                             none: false),
+           throughState: throughState,
+           newState: newState ?? throughState);
 
     private static Rule Rule(S oldState, EOF eof, S throughState, S newState = null)
       => new Rule(
-           oldState,
-           "End of file",
-           c => c.endOfFile,
-           throughState,
-           newState ?? throughState);
+           oldState: oldState,
+           description: "End of file",
+           test: c => c.endOfFile,
+           throughState: throughState,
+           newState: newState ?? throughState);
 
     private static string CharDescription(char c)
       => (c == '"') ? "'\"'" : $"\"{c.ToString()}\"";
 
     private static Rule Rule(S oldState, char c, S throughState, S newState = null)
       => new Rule(
-           oldState,
-           CharDescription(c),
-           x => x.codePoints
-                 .Single()
-                 .Match(some: xx => xx == c.ToString(),
-                        none: false),
-           throughState,
-           newState ?? throughState);
+           oldState: oldState,
+           description: CharDescription(c),
+           test: x => x.codePoints
+                       .Single()
+                       .Match(some: xx => xx == c.ToString(),
+                              none: false),
+           throughState: throughState,
+           newState: newState ?? throughState);
 
     private static Rule Rule(S oldState, char[] cs, S throughState, S newState = null) {
       var csl = cs.Select(x => x.ToString()).ToImmutableList();
       return new Rule(
-        oldState,
-        ", ".Join(cs.Select(CharDescription)),
-        x => x.codePoints.Single().Match(some: csl.Contains, none: false),
-        throughState,
-        newState ?? throughState);
+        oldState: oldState,
+        description: ", ".Join(cs.Select(CharDescription)),
+        test: x => x.codePoints
+                    .Single()
+                    .Match(some: csl.Contains, none: false),
+        throughState: throughState,
+        newState: newState ?? throughState);
     }
 
     public static EOF EOF = new EOF();

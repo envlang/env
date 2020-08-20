@@ -13,6 +13,9 @@ public struct GraphemeCluster {
     this.codePoints = codePoints;
   }
 
+  public LeafLens<GraphemeCluster, Whole> ChainLens<Whole>(Func<GraphemeCluster, Whole> wrap)
+    => new LeafLens<GraphemeCluster, Whole>(wrap: wrap, oldHole: this);
+
   public static implicit operator GraphemeCluster(char c)
     => new GraphemeCluster(false, c.ToString(), c.ToString().Singleton());
 }
