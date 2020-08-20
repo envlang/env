@@ -4,15 +4,15 @@ public static class ParserGenerator {
   public static void Main() {
     Generate(
       "ParserGenerated.cs",
-        "using System.Collections.Generic;\n"
+        "using System.Collections.Immutable;\n"
       + "using S = Lexer.S;",
       "public static partial class Parser {",
       "}",
       "Parser.",
       Types(
         Variant("Grammar",
-          Case("List<Parser.Grammar>", "Or"),
-          Case("List<Parser.Grammar>", "Sequence")),
+          Case("ImmutableList<Parser.Grammar>", "Or"),
+          Case("ImmutableList<Parser.Grammar>", "Sequence")),
 
         Variant("Fixity",
           Case("Closed"),
@@ -25,17 +25,17 @@ public static class ParserGenerator {
 
         Record("Operator",
           Field("Fixity", "fixity"),
-          Field("List<S>", "parts"),
-          Field("List<string>", "holes")),
+          Field("ImmutableList<S>", "parts"),
+          Field("ImmutableList<string>", "holes")),
 
         Record("DAGNode",
-          Field("List<Operator>", "infixLeftAssociative"),
-          Field("List<Operator>", "infixRightAssociative"),
-          Field("List<Operator>", "infixNonAssociative"),
-          Field("List<Operator>", "prefix"),
-          Field("List<Operator>", "postfix"),
-          Field("List<Operator>", "closed"),
-          Field("List<Operator>", "terminal"),
-          Field("List<string>", "successorNodes"))));
+          Field("ImmutableList<Operator>", "infixLeftAssociative"),
+          Field("ImmutableList<Operator>", "infixRightAssociative"),
+          Field("ImmutableList<Operator>", "infixNonAssociative"),
+          Field("ImmutableList<Operator>", "prefix"),
+          Field("ImmutableList<Operator>", "postfix"),
+          Field("ImmutableList<Operator>", "closed"),
+          Field("ImmutableList<Operator>", "terminal"),
+          Field("ImmutableList<string>", "successorNodes"))));
   }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using Immutable;
 using System.Globalization;
@@ -45,7 +46,7 @@ public static partial class Lexer {
            newState ?? throughState);
 
     private static Rule Rule(S oldState, char[] cs, S throughState, S newState = null) {
-      var csl = cs.Select(x => x.ToString()).ToList();
+      var csl = cs.Select(x => x.ToString()).ToImmutableList();
       return new Rule(
         oldState,
         ", ".Join(cs.Select(CharDescription)),
@@ -55,7 +56,7 @@ public static partial class Lexer {
     }
 
     public static EOF EOF = new EOF();
-    public static List<Rule> Default = new List<Rule> {
+    public static ImmutableList<Rule> Default = ImmutableList(
       Rule(S.Space,   C.DecimalDigitNumber, S.Int),
       Rule(S.Space,   C.SpaceSeparator,     S.Space),
       Rule(S.Space,   EOF,                  S.End),
@@ -69,20 +70,20 @@ public static partial class Lexer {
       Rule(S.String,  C.LowercaseLetter,    S.String),
       Rule(S.String,  C.UppercaseLetter,    S.String),
       Rule(S.String,  C.DecimalDigitNumber, S.String),
-      Rule(S.String,  '"',                  S.StringClose, S.Space),
-    };
+      Rule(S.String,  '"',                  S.StringClose, S.Space)
+    );
 
-    public static DefaultDictionary<S, List<Rule>> Dict =
+    public static ImmutableDefaultDictionary<S, List<Rule>> Dict =
       Default
         .GroupBy(r => r.oldState, r => r)
-        .ToDefaultDictionary(
+        .ToImmutableDefaultDictionary(
           new List<Rule>(),
           rs => rs.Key,
           rs => rs.ToList()) ;
 
     // This adds transitions through an implicit empty whitespace.
-    public static DefaultDictionary<S, List<Rule>> WithEpsilonTransitions =
-      Dict.ToDefaultDictionary(
+    public static ImmutableDefaultDictionary<S, List<Rule>> WithEpsilonTransitions =
+      Dict.ToImmutableDefaultDictionary(
         new List<Rule>(),
         kv => kv.Key,
         kv => kv.Value.Any(r => true) // r.test(" ")
@@ -128,7 +129,7 @@ public static partial class Lexer {
         .SingleUseEnumerable()
         .TakeUntil(c => c.str.StartsWith("\n"))
         .Select(c => c.str)
-        .Aggregate(new StringBuilder(), Append);
+        .JoinWith("");
 
     var expected = ", ".Join(possibleNext.Select(p => p.description));
     var actual = (gc.endOfFile ? "" : "grapheme cluster ") + gc.Description();
@@ -152,8 +153,7 @@ public static partial class Lexer {
     while (e.MoveNext()) {
       var c = e.Current;
       context.Append(c.str);
-      var possibleNext = Rules.WithEpsilonTransitions
-                           .GetOrDefault(state, new List<Rule>());
+      var possibleNext = Rules.WithEpsilonTransitions[state];
       yield return
         possibleNext
           .First(r => r.test(c))

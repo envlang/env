@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using SearchOption = System.IO.SearchOption;
 using Compiler = System.Func<Ast.Expr, string>;
@@ -42,7 +43,7 @@ public static class MainClass {
     // Circumvent bug with collection initializers, tuples and
     // first-class functions by using repeated .Add()
     // See https://repl.it/@suzannesoy/WarlikeWorstTraining#main.cs
-    var compilers = new List<Tuple<string, Compiler, Exe>>()
+    var compilers = ImmutableList<Tuple<string, Compiler, Exe>>.Empty
       .Cons(" js ", Compilers.JS.Compile, Exe("node"))
       .Cons("eval", Evaluator.Evaluate,   Exe("cat"));
 

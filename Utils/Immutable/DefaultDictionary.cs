@@ -1,30 +1,33 @@
-//namespace Immutable {
-  using System;
-  using System.Collections.Generic;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 
-  public class DefaultDictionary<TKey, TValue> : ImmutableDictionary<TKey, TValue> {
-    public readonly TValue defaultValue;
-    
-    public DefaultDictionary(TValue defaultValue, ImmutableDictionary<TKey, TValue> dictionary) : base(dictionary) {
-      this.defaultValue = defaultValue;
-    }
-
-    public DefaultDictionary(DefaultDictionary<TKey, TValue> dictionary, TKey key, TValue value) : base(dictionary, key, value) {
-      this.defaultValue = dictionary.defaultValue;
-    }
-
-    public new TValue this[TKey key] {
-      get {
-        return this.GetOrDefault(key, defaultValue);
-      }
-    }
-
-    public new DefaultDictionary<TKey, TValue> With(TKey key, TValue value)
-      => new DefaultDictionary<TKey, TValue>(this, key, value);
+public class ImmutableDefaultDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>> {
+  public readonly TValue defaultValue;
+  public readonly ImmutableDictionary<TKey, TValue> dictionary;
+  
+  public ImmutableDefaultDictionary(TValue defaultValue, ImmutableDictionary<TKey, TValue> dictionary) {
+    this.defaultValue = defaultValue;
+    this.dictionary = dictionary;
   }
 
-  public static class DefaultDictionaryExtensionMethods {
-    public static DefaultDictionary<UKey, UValue> ToDefaultDictionary<T, UKey, UValue>(this IEnumerable<T> e, UValue defaultValue, Func<T, UKey> key, Func<T, UValue> value)
-      => new DefaultDictionary<UKey, UValue>(defaultValue, e.ToImmutableDictionary(key, value));
+  public TValue this[TKey key] {
+    get => dictionary.GetOrDefault(key, defaultValue);
   }
-//}
+
+  public ImmutableDefaultDictionary<TKey, TValue> With(TKey key, TValue value)
+    => new ImmutableDefaultDictionary<TKey, TValue>(defaultValue, dictionary.Add(key, value));
+
+  public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => dictionary.GetEnumerator();
+
+  IEnumerator IEnumerable.GetEnumerator() => dictionary.GetEnumerator();
+}
+
+public static class ImmutableDefaultDictionaryExtensionMethods {
+  public static ImmutableDefaultDictionary<UKey, UValue> ToImmutableDefaultDictionary<T, UKey, UValue>(this IEnumerable<T> e, UValue defaultValue, Func<T, UKey> key, Func<T, UValue> value)
+    => new ImmutableDefaultDictionary<UKey, UValue>(defaultValue, e.ToImmutableDictionary(key, value));
+
+  public static ImmutableDefaultDictionary<TKey, TValue> ToImmutableDefaultDictionary<TKey, TValue>(this ImmutableDictionary<TKey, TValue> d, TValue defaultValue)
+    => new ImmutableDefaultDictionary<TKey, TValue>(defaultValue, d);
+}
