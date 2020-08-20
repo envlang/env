@@ -8,7 +8,7 @@ run: main.exe Makefile
 	MONO_PATH=/usr/lib/mono/4.5/:/usr/lib/mono/4.5/Facades/ mono $<
 
 main.exe: $(CS) $(GENERATED) Makefile
-	mcs -out:$@ \
+	mcs -debug+ -out:$@ \
    /reference:/usr/lib/mono/fsharp/FSharp.Core.dll \
    /reference:/usr/lib/mono/4.5/System.Collections.Immutable.dll \
    /reference:/usr/lib/mono/4.5/Facades/netstandard.dll \

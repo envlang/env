@@ -1,32 +1,34 @@
 using System;
 using System.Text;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using Immutable;
 using S = Lexer.S;
 using Lexeme = Lexer.Lexeme;
 using static Global;
 
-public static partial class Parser {
-  public class PrecedenceDAG: Dictionary<string, DAGNode> {};
+using PrecedenceDAG = System.Collections.Immutable.ImmutableDictionary<string, Parser.DAGNode>;
 
+public static partial class Parser {
   public static PrecedenceDAG DefaultPrecedenceDAG = new PrecedenceDAG();
 
-  public static DAGNode With(DAGNode node, Operator op) {
-    var newOp = op.fixity.Match(
-      Closed: () => node.lens.closed.Cons(op),
-      InfixLeftAssociative: () => node.lens.infixLeftAssociative.Cons(op),
-      InfixRightAssociative: () => node.lens.infixRightAssociative.Cons(op),
-      InfixNonAssociative: () => node.lens.infixNonAssociative.Cons(op),
-      Prefix: () => node.lens.prefix.Cons(op),
-      Postfix: () => node.lens.postfix.Cons(op),
-      Terminal: () => node.lens.terminal.Cons(op)
+  public static DAGNode With(DAGNode node, Operator @operator) {
+    var newNode = @operator.fixity.Match(
+      Closed: () => node.lens.closed.Cons(@operator),
+      InfixLeftAssociative: () => node.lens.infixLeftAssociative.Cons(@operator),
+      InfixRightAssociative: () => node.lens.infixRightAssociative.Cons(@operator),
+      InfixNonAssociative: () => node.lens.infixNonAssociative.Cons(@operator),
+      Prefix: () => node.lens.prefix.Cons(@operator),
+      Postfix: () => node.lens.postfix.Cons(@operator),
+      Terminal: () => node.lens.terminal.Cons(@operator)
     );
     // op.fixity, parts, holes
     throw new NotImplementedException();
   }
 
   public static PrecedenceDAG With(PrecedenceDAG precedenceDAG, Operator @operator) {
+    precedenceDAG.lens(@operator.precedenceGroup);
     /*precedenceDAG.update(
       dagNode => dagNode.Add(@operator)
     );*/

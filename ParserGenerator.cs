@@ -24,6 +24,7 @@ public static class ParserGenerator {
           Case("Terminal")),
 
         Record("Operator",
+          Field("string", "precedenceGroup"),
           Field("Fixity", "fixity"),
           Field("ImmutableList<S>", "parts"),
           Field("ImmutableList<string>", "holes")),
