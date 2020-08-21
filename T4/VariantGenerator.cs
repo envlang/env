@@ -145,7 +145,10 @@ public static class VariantGenerator {
   }
 
   private static void VariantClass(this Action<string> w, string qualifier, string name, Variant variant) {
-    w($"  public abstract class {name} : IEquatable<{name}> {{");
+    // Mark as partial to allow defining implicit conversions
+    // and other operators. It would be cleaner to directly
+    // specify these and keep the class impossible to extend.
+    w($"  public abstract partial class {name} : IEquatable<{name}> {{");
     w.PrivateConstructor(qualifier, name, variant);
     w($"");
     w.Visitor(qualifier, name, variant);
