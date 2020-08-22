@@ -120,6 +120,21 @@ public static class Collection {
     }
   }
 
+  public static Option<T> Last<T>(this IEnumerable<T> ie) {
+    var e = ie.GetEnumerator();
+    T element = default(T);
+    bool found = false;
+    while (e.MoveNext()) {
+      element = e.Current;
+      found = true;
+    }
+    if (found) {
+      return element.Some();
+    } else {
+      return Option.None<T>();
+    }
+  }
+
   public static Option<T> First<T>(this IEnumerable<T> ie, Func<T, bool> predicate) {
     var e = ie.GetEnumerator();
     while (e.MoveNext()) {
@@ -128,6 +143,17 @@ public static class Collection {
       }
     }
     return Option.None<T>();
+  }
+
+  public static Option<U> First<T, U>(this IEnumerable<T> ie, Func<T, Option<U>> selector) {
+    var e = ie.GetEnumerator();
+    while (e.MoveNext()) {
+      var found = selector(e.Current);
+      if (found.IsSome) {
+        return found;
+      }
+    }
+    return Option.None<U>();
   }
 
   public static Option<T> Single<T>(this IEnumerable<T> ie) {
@@ -162,7 +188,26 @@ public static class Collection {
     }
   }
 
+  public static Option<T> Aggregate<T, T>(this IEnumerable<T> ie, Func<T, T, T> f) {
+    var e = ie.GetEnumerator();
+    if (e.MoveNext()) {
+      var accumulator = e.Current;
+      while (e.MoveNext()) {
+        accumulator = f(accumulator, e.Current);
+      }
+      return accumulator.Some();
+    }
+    return Option.None<T>();
+  }
+
   public static string JoinWith(this IEnumerable<string> strings, string joiner)
     // TODO: use StringBuilder, there is no complexity info in the docs.
     => String.Join(joiner, strings);
+
+  public static string JoinToStringWith<T>(this IEnumerable<T> objects, string joiner)
+    // TODO: use StringBuilder, there is no complexity info in the docs.
+    => String.Join(joiner, objects.Select(o => o.ToString()));
+
+  public static bool SetEquals<T>(this ImmutableHashSet<T> a, ImmutableHashSet<T> b)
+    => a.All(x => b.Contains(x)) && b.All(x => a.Contains(x));
 }

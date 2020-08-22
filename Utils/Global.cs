@@ -11,10 +11,13 @@ public static class Global {
   
   public static void Log (string str) => Console.WriteLine(str);
 
-  public static Unit unit() => Unit.unit;
+  public static Unit unit { get => Unit.unit; }
 
   public static Option<T> None<T>() => Option.None<T>();
 
   public static ImmutableList<T> ImmutableList<T>(params T[] xs)
     => xs.ToImmutableList();
+
+  public static ImmutableHashSet<T> ImmutableHashSet<T>(params T[] xs)
+    => xs.ToImmutableHashSet();
 }

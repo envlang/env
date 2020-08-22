@@ -63,6 +63,25 @@ public static partial class Lexer {
       Rule(S.Space,   C.SpaceSeparator,     S.Space),
       Rule(S.Space,   EOF,                  S.End),
       Rule(S.Space,   '"',                  S.StringOpen, S.String),
+      Rule(S.Space,   new[]{'='},           S.Eq),
+      Rule(S.Eq,      new[]{'='},           S.Eq, S.Space),
+      Rule(S.Space,   new[]{'&'},           S.And),
+      Rule(S.And,     new[]{'&'},           S.And, S.Space),      
+      // TODO: https://unicode.org/reports/tr31/#D1 has a lot to say about
+      // identifiers
+      Rule(S.Space,   C.LowercaseLetter,    S.Ident),
+      Rule(S.Space,   C.UppercaseLetter,    S.Ident),
+      Rule(S.Space,   C.TitlecaseLetter,    S.Ident),
+      Rule(S.Space,   C.ModifierLetter,     S.Ident),
+      Rule(S.Space,   C.OtherLetter,        S.Ident),
+      Rule(S.Space,   C.LetterNumber,       S.Ident),
+
+      Rule(S.Ident,   C.LowercaseLetter,    S.Ident),
+      Rule(S.Ident,   C.UppercaseLetter,    S.Ident),
+      Rule(S.Ident,   C.TitlecaseLetter,    S.Ident),
+      Rule(S.Ident,   C.ModifierLetter,     S.Ident),
+      Rule(S.Ident,   C.OtherLetter,        S.Ident),
+      Rule(S.Ident,   C.LetterNumber,       S.Ident),
 
       Rule(S.Int,     C.DecimalDigitNumber, S.Int),
       Rule(S.Int,     C.SpaceSeparator,     S.Space),

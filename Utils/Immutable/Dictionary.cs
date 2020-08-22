@@ -1,3 +1,4 @@
+/*
 //namespace Immutable {
   using System;
   using System.Linq;
@@ -8,7 +9,6 @@
   using System.Collections.Immutable;
 
   // TODO: use Microsoft.FSharp.Collections.FSharpMap
-  /*
   public class ImmutableDictionary<TKey, TValue> : Mutable.IReadOnlyDictionary<TKey, TValue> {
     private readonly Mutable.Dictionary<TKey, TValue> d;
     private System.Collections.Immutable.ImmutableDictionary<TKey, TValue> i = System.Collections.Immutable.ImmutableDictionary<TKey, TValue>.Empty;

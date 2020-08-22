@@ -8,6 +8,10 @@ public class ParserErrorException : UserErrorException {
   public ParserErrorException(string e) : base("Parser error: " + e) {}
 }
 
+public class ParserExtensionException : UserErrorException {
+  public ParserExtensionException(string e) : base("Parser extension error: " + e) {}
+}
+
 public class LexerErrorException : UserErrorException {
   public LexerErrorException(string e) : base("Lexer error: " + e) {}
 }

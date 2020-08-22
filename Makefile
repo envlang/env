@@ -9,7 +9,6 @@ run: main.exe Makefile
 
 main.exe: $(CS) $(GENERATED) Makefile
 	mcs -debug+ -out:$@ \
-   /reference:/usr/lib/mono/fsharp/FSharp.Core.dll \
    /reference:/usr/lib/mono/4.5/System.Collections.Immutable.dll \
    /reference:/usr/lib/mono/4.5/Facades/netstandard.dll \
    $(filter-out Makefile, $^)

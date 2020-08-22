@@ -65,18 +65,12 @@ public static class ImmutableDefaultDictionaryLensExtensionMethods {
       System.Func<ImmutableDefaultDictionary<TKey, TValue>, Whole> wrap)
     => new ImmutableDefaultDictionaryLens<TKey, TValue, Whole>(wrap: wrap, oldHole: hole);
 
-  // TODO: this should be an extension property (once C# supports them)
-  public static ImmutableDefaultDictionaryLens<TKey, TValue, ImmutableDefaultDictionary<TKey, TValue>>
-    lens<TKey, TValue>(
-      this ImmutableDefaultDictionary<TKey, TValue> d)
-    => d.ChainLens(x => x);
-
   // this is a shorthand since we don't have extension properties
   public static ImmutableDefaultDictionaryValueLens<TKey, TValue, ImmutableDefaultDictionary<TKey, TValue>>
     lens<TKey, TValue>(
       this ImmutableDefaultDictionary<TKey, TValue> d,
       TKey key)
-    => d.lens()[key];
+    => d.lens[key];
 
   public static ImmutableDefaultDictionaryValueLens<TKey, TValue, Whole>
     UpdateKey<TKey, TValue, Whole>(

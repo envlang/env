@@ -18,7 +18,7 @@ public static class MainClass {
       .Pipe(c => dest.Write(c));
   }
 
-  public static void RunTest(string toolchainName, Compiler compile, Exe runner, File source) {
+  public static bool RunTest(string toolchainName, Compiler compile, Exe runner, File source) {
     var destPath = tests_results.Combine(source);
     var sourcePath = tests.Combine(source);
     var expected = sourcePath.DropExtension().Combine(Ext(".o"));
@@ -27,15 +27,29 @@ public static class MainClass {
     
     destPath.DirName().Create();
 
-    CompileToFile(compile, sourcePath, destPath);
-    
-    var actualStr = runner.Run(destPath);
-    var expectedStr = expected.Read();
-    if (actualStr != expectedStr) {
+    UserErrorException exception = null;
+    try {
+      CompileToFile(compile, sourcePath, destPath);
+    } catch (UserErrorException e) {
+      exception = e;
+    }
+
+    if (exception != null) {
+      Console.WriteLine("");
       Console.WriteLine("\x1b[1;31mFail\x1b[m");
-      throw new TestFailedException($"{source}: expected {expectedStr} but got {actualStr}.");
+      Console.WriteLine($"\x1b[1;33m{exception.Message}\x1b[m\n");
+      return false;
     } else {
-      Console.Write("\x1b[1;32mOK\x1b[m\r");
+      var actualStr = runner.Run(destPath);
+      var expectedStr = expected.Read();
+      if (actualStr != expectedStr) {
+        Console.WriteLine("\x1b[1;31mFail\x1b[m");
+        Console.WriteLine($"\x1b[1;33m{source}: expected {expectedStr} but got {actualStr}.\x1b[m\n");
+        return false;
+      } else {
+        Console.Write("\x1b[1;32mOK\x1b[m\r");
+        return true;
+      }
     }
   }
 
@@ -48,13 +62,22 @@ public static class MainClass {
       .Cons("eval", Evaluator.Evaluate,   Exe("cat"));
 
     var total = 0;
+    var passed = 0;
+    var failed = 0;
     foreach (var t in Dir("Tests/").GetFiles("*.e", SearchOption.AllDirectories)) {
       foreach (var compiler in compilers) {
-        RunTest(compiler.Item1, compiler.Item2, compiler.Item3, t);
+        if (RunTest(compiler.Item1, compiler.Item2, compiler.Item3, t)) {
+          passed++;
+        } else {
+          failed++;
+        }
         total++;
       }
     }
-    Console.WriteLine($"\x1b[K{total} tests run.");
+    Console.WriteLine($"\x1b[K{passed}/{total} tests passed, {failed} failed.");
+    if (failed != 0) {
+      Environment.Exit(1);
+    }
   }
 
   public static void Main (string[] args) {

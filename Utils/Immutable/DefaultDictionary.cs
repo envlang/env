@@ -1,9 +1,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Collections.Immutable;
 
-public class ImmutableDefaultDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>> {
+public class ImmutableDefaultDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>, IString {
   public readonly TValue defaultValue;
   public readonly ImmutableDictionary<TKey, TValue> dictionary;
   
@@ -33,6 +34,25 @@ public class ImmutableDefaultDictionary<TKey, TValue> : IEnumerable<KeyValuePair
   public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => dictionary.GetEnumerator();
 
   IEnumerator IEnumerable.GetEnumerator() => dictionary.GetEnumerator();
+
+  public ImmutableDefaultDictionaryLens<
+           TKey,
+           TValue,
+           ImmutableDefaultDictionary<TKey, TValue>>
+    lens {
+      get => this.ChainLens(x => x);
+    }
+
+  public override string ToString()
+    => "ImmutableDefaultDictionary {\n"
+       + this.Select(kvp => (ks: kvp.Key.ToString(),
+                             vs: kvp.Value.ToString()))
+          .OrderBy(p => p.ks)
+          .Select(p => $"{{ {p.ks}, {p.vs} }}")
+          .JoinWith(",\n")
+       + "\n}";
+
+  public string Str() => ToString();
 }
 
 public static class ImmutableDefaultDictionaryExtensionMethods {

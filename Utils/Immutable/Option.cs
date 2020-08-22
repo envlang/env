@@ -3,6 +3,8 @@ namespace Immutable {
 
   public interface Option<out T> : System.Collections.Generic.IEnumerable<T> {
     U Match_<U>(Func<T, U> some, Func<U> none);
+    bool IsSome { get; }
+    bool IsNone { get; }
   }
 
   public static class Option {
@@ -17,6 +19,9 @@ namespace Immutable {
 
         public U Match_<U>(Func<T, U> Some, Func<U> None) => Some(value);
 
+        public bool IsSome { get => true; }
+        public bool IsNone { get => false; }
+
         public System.Collections.Generic.IEnumerator<T> GetEnumerator()
           => value.Singleton().GetEnumerator();
         
@@ -28,6 +33,9 @@ namespace Immutable {
         public None() { }
 
         public U Match_<U>(Func<T, U> Some, Func<U> None) => None();
+
+        public bool IsSome { get => false; }
+        public bool IsNone { get => true; }
 
         public System.Collections.Generic.IEnumerator<T> GetEnumerator()
           => System.Linq.Enumerable.Empty<T>().GetEnumerator();
@@ -52,6 +60,9 @@ namespace Immutable {
 
     public static Option<U> IfSome<T, U>(this Option<T> o, Func<T, U> some)
       => o.Map(some);
+
+    public static Option<U> Bind<T, U>(this Option<T> o, Func<T, Option<U>> f)
+      => o.Match_(some => f(some), () => Option.None<U>());
 
     public static T Else<T>(this Option<T> o, Func<T> none)
       => o.Match_(some => some, none);

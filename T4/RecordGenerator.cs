@@ -55,6 +55,14 @@ public static class RecordGenerator {
     w($"        );");
   }
 
+  private static void StringConversion(this Action<string> w, string qualifier, string name, Record record) {
+    w($"    public override string ToString()");
+    w($"      => this.CustomToString();");
+    w($"    private string CustomToString(params Immutable.Uninstantiatable[] _)");
+    w($"      => $\"{name}(\\n{String.Join(",\\n", record.Select(@field => $"  {@field.Key}: {{{@field.Key}.Str<{@field.Value}>()}}"))})\";");
+    w($"    public string Str() => ToString();");
+  }
+
   private static void With(this Action<string> w, string qualifier, string name, Record record) {
     foreach (var @field in record) {
       var F = @field.Key;
@@ -101,12 +109,14 @@ public static class RecordGenerator {
   }
 
   private static void RecordClass(this Action<string> w, string qualifier, string name, Record record) {
-    w($"  public sealed class {name} : IEquatable<{name}> {{");
+    w($"  public sealed partial class {name} : IEquatable<{name}>, IString {{");
     w.Fields(qualifier, name, record);
     w($"");
     w.Constructor(qualifier, name, record);
     w($"");
     w.Equality(qualifier, name, record);
+    w($"");
+    w.StringConversion(qualifier, name, record);
     w($"");
     w.With(qualifier, name, record);
     w($"");

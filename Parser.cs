@@ -10,16 +10,19 @@ using static Global;
 
 public static partial class Parser {
   public static Ast.Expr Parse(string source) {
+    Log(DefaultGrammar.DefaultPrecedenceDAG.ToString());
     return Lexer.Lex(source)
       .SelectMany(lexeme =>
         lexeme.state.Match(
           Int: () => Ast.Expr.Int(Int32.Parse(lexeme.lexeme)).Singleton(),
           String: () => Ast.Expr.String(lexeme.lexeme).Singleton(),
+          Ident: () => Enumerable.Empty<Ast.Expr>(), // TODO
+          And: () => Enumerable.Empty<Ast.Expr>(), // TODO
           Space: () => Enumerable.Empty<Ast.Expr>(), // ignore
-          Eq: () => Enumerable.Empty<Ast.Expr>(),
-          End: () => Enumerable.Empty<Ast.Expr>(),
-          Decimal: () => Enumerable.Empty<Ast.Expr>(),
-          StringOpen: () => Enumerable.Empty<Ast.Expr>(),
+          Eq: () => Enumerable.Empty<Ast.Expr>(), // TODO
+          End: () => Enumerable.Empty<Ast.Expr>(), // TODO
+          Decimal: () => Enumerable.Empty<Ast.Expr>(), // TODO
+          StringOpen: () => Enumerable.Empty<Ast.Expr>(), // TODO
           StringClose: () => Enumerable.Empty<Ast.Expr>()
         )
       )

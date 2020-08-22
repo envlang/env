@@ -1,4 +1,4 @@
-// Code quality of this file: medium.
+// Code quality of this file: low.
 
 using System;
 using System.Collections.Generic;
@@ -48,7 +48,16 @@ public static class VariantGenerator {
     foreach (var @case in variant) {
       var C = @case.Key;
       var Ty = @case.Value;
-      w($"    public virtual Immutable.Option<{Ty == null ? "Immutable.Unit" : Ty}> As{C}() => Immutable.Option.None<{Ty == null ? "Immutable.Unit" : Ty}>();");
+      // This method is overloaded by the corresponding case's class.
+      w($"    public virtual Immutable.Option<{Ty == null ? "Immutable.Unit" : Ty}> As{C} {{ get => Immutable.Option.None<{Ty == null ? "Immutable.Unit" : Ty}>(); }}");
+    }
+  }
+
+  private static void Is(this Action<string> w, string qualifier, string name, Variant variant) {
+    foreach (var @case in variant) {
+      var C = @case.Key;
+      var Ty = @case.Value;
+      w($"    public virtual bool Is{C} {{ get => As{C}.IsSome; }}");
     }
   }
 
@@ -69,6 +78,19 @@ public static class VariantGenerator {
     w($"    }}");
   }
 
+  private static void GetValue(this Action<string> w, string qualifier, string name, Variant variant) {
+    w($"    private Immutable.Option<string> GetValue() {{");
+    w($"      return this.Match(");
+    w(String.Join(",\n", variant.Select(@case =>
+                $"        {@case.Key}: {
+                  @case.Value == null
+                  ? $"() => Immutable.Option.None<string>()"
+                  : $"value => value.Str<{@case.Value}>().Some()"
+                }")));
+    w($"      );");
+    w($"    }}");
+  }
+
   private static void Equality(this Action<string> w, string qualifier, string name, Variant variant) {
     w($"    public static bool operator ==({name} a, {name} b)");
     w($"      => Equality.Operator(a, b);");
@@ -78,6 +100,14 @@ public static class VariantGenerator {
     w($"    public abstract bool Equals({name} other);");
     w($"");
     w($"    public override abstract int GetHashCode();");
+  }
+
+  private static void StringConversion(this Action<string> w, string qualifier, string name, Variant variant) {
+    w($"    public override string ToString()");
+    w($"      => this.CustomToString();");
+    w($"    private string CustomToString(params Immutable.Uninstantiatable[] _)");
+    w($"      => GetTag() + GetValue().Match(some: x => $\"({{x}})\", none: () => \"\");");
+    w($"    public string Str() => this.ToString();");
   }
 
   private static void CaseValue(this Action<string> w, string qualifier, string name, string C, string Ty) {
@@ -96,7 +126,7 @@ public static class VariantGenerator {
   }
 
   private static void CaseAs(this Action<string> w, string qualifier, string name, string C, string Ty) {
-    w($"         public override Immutable.Option<{Ty == null ? "Immutable.Unit" : Ty}> As{C}() => Immutable.Option.Some<{Ty == null ? "Immutable.Unit" : Ty}>({Ty == null ? "Immutable.Unit.unit" : "this.value"});");
+    w($"         public override Immutable.Option<{Ty == null ? "Immutable.Unit" : Ty}> As{C} {{ get => Immutable.Option.Some<{Ty == null ? "Immutable.Unit" : Ty}>({Ty == null ? "Immutable.Unit.unit" : "this.value"}); }}");
   }
 
   private static void CaseEquality(this Action<string> w, string qualifier, string name, string C, string Ty) {
@@ -120,10 +150,6 @@ public static class VariantGenerator {
     }
   }
 
-  private static void CaseToString(this Action<string> w, string qualifier, string name, string C, string Ty) {
-    w($"        public override string ToString() => \"{C}\";");
-  }
-
   private static void Cases(this Action<string> w, string qualifier, string name, Variant variant) {
     foreach (var @case in variant) {
       var C = @case.Key;
@@ -138,8 +164,6 @@ public static class VariantGenerator {
       w.CaseAs(qualifier, name, C, Ty);
       w($"");
       w.CaseEquality(qualifier, name, C, Ty);
-      w($"");
-      w.CaseToString(qualifier, name, C, Ty);
       w($"      }}");
     }
   }
@@ -148,7 +172,7 @@ public static class VariantGenerator {
     // Mark as partial to allow defining implicit conversions
     // and other operators. It would be cleaner to directly
     // specify these and keep the class impossible to extend.
-    w($"  public abstract partial class {name} : IEquatable<{name}> {{");
+    w($"  public abstract partial class {name} : IEquatable<{name}>, IString {{");
     w.PrivateConstructor(qualifier, name, variant);
     w($"");
     w.Visitor(qualifier, name, variant);
@@ -159,9 +183,18 @@ public static class VariantGenerator {
     w($"");
     w.As(qualifier, name, variant);
     w($"");
+    w.Is(qualifier, name, variant);
+    w($"");
     w.ChainLens(qualifier, name, variant);
     w($"");
+    w.GetTag(qualifier, name, variant);
+    w($"");
+    w.GetValue(qualifier, name, variant);
+    w($"");
     w.Equality(qualifier, name, variant);
+    w($"");
+    w.StringConversion(qualifier, name, variant);
+    w($"");
     w($"    public static class Cases {{");
     w.Cases(qualifier, name, variant);
     w($"    }}");
