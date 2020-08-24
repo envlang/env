@@ -210,4 +210,29 @@ public static class Collection {
 
   public static bool SetEquals<T>(this ImmutableHashSet<T> a, ImmutableHashSet<T> b)
     => a.All(x => b.Contains(x)) && b.All(x => a.Contains(x));
+
+  public static (Option<T> firstElement, ImmutableQueue<T> rest) Dequeue<T>(this ImmutableQueue<T> q) {
+    if (q.IsEmpty) {
+      return (Option.None<T>(), q);
+    } else {
+      T firstElement;
+      var rest = q.Dequeue(out firstElement);
+      return (firstElement.Some(), rest);
+    }
+  }
+
+  public static IEnumerable<T> SkipLastWhile<T>(this IEnumerable<T> e, Func<T, bool> predicate) {
+    var pending = ImmutableQueue<T>.Empty;
+    foreach (var x in e) {
+      if (predicate(x)) {
+        pending = pending.Enqueue(x);
+      } else {
+        while (!pending.IsEmpty) {
+          yield return pending.Peek();
+          pending = pending.Dequeue();
+        }
+        yield return x;
+      }
+    }
+  }
 }

@@ -4,7 +4,8 @@ public static class ParserGenerator {
   public static void Main() {
     Generate(
       "MixFixGenerated.cs",
-        "using System.Collections.Immutable;\n"
+        "using System.Collections.Generic;\n"
+      + "using System.Collections.Immutable;\n"
       + "using S = Lexer.S;\n"
       + "using PrecedenceGroupName = System.String;",
       "public static partial class MixFix {",
@@ -12,8 +13,10 @@ public static class ParserGenerator {
       "MixFix.",
       Types(
         Variant("Grammar",
-          Case("ImmutableList<Grammar>", "Or"),
-          Case("ImmutableList<Grammar>", "Sequence")),
+          Case("Grammar",              "RepeatOnePlus"),
+          Case("IEnumerable<Grammar>", "Or"),
+          Case("IEnumerable<Grammar>", "Sequence"),
+          Case("S",                    "Terminal")),
 
         Variant("Fixity",
           Case("Closed"),

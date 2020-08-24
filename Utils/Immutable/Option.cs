@@ -67,6 +67,9 @@ namespace Immutable {
     public static T Else<T>(this Option<T> o, Func<T> none)
       => o.Match_(some => some, none);
 
+    public static T Else<T>(this Option<T> o, T none)
+      => o.Match_(some => some, () => none);
+
     public static Option<T> Else<T>(this Option<T> o, Func<Option<T>> none)
       => o.Match_(value => value.Some(), none);
 

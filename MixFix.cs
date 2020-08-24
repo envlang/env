@@ -20,6 +20,14 @@ public class Foo {
 }
 
 public static partial class MixFix {
+  public partial class Grammar {
+    public static Grammar Sequence(params Grammar[] xs)
+      => Grammar.Sequence(xs.ToImmutableList());
+
+    public static Grammar Or(params Grammar[] xs)
+      => Grammar.Or(xs.ToImmutableList());
+  }
+
   public partial class Operator {
     private string CustomToString()
     => $"Operator(\"{precedenceGroup}\", {fixity}, {parts.Select(x => x.Match(Hole: h => h.Select(g => g.ToString()).JoinWith("|"), Name: n => $"\"{n}\"")).JoinWith(", ")})";
@@ -46,6 +54,12 @@ public static partial class MixFix {
     // TODO: cache this for improved complexity
     public Option<ImmutableHashSet<string>> rightmostHole {
       get => parts.Last().Bind(lastPart => lastPart.AsHole);
+    }
+
+    // TODO: does this need any caching?
+    public IEnumerable<Part> internalParts {
+      get => parts.SkipWhile(part => part.IsHole)
+                  .SkipLastWhile(part => part.IsHole);
     }
 
     private static Func<Fixity> error =
@@ -110,6 +124,16 @@ public static partial class MixFix {
     public Option<ImmutableHashSet<string>> rightmostHole {
       get => allOperators.First(@operator => @operator.rightmostHole);
     }
+
+    // TODO: cache this for improved complexity
+    public ImmutableHashSet<string> leftmostHole_ {
+      get => leftmostHole.Else(ImmutableHashSet<string>.Empty);
+    }
+
+    // TODO: cache this for improved complexity
+    public ImmutableHashSet<string> rightmostHole_ {
+      get => rightmostHole.Else(ImmutableHashSet<string>.Empty);
+    }
   }
 
   public static DAGNode EmptyDAGNode = new DAGNode(
@@ -145,7 +169,7 @@ public static partial class MixFix {
     existing.IfSome(existingHole =>
       @new.IfSome(newHole => {
         if (! newHole.SetEquals(existingHole)) {
-          throw new ParserExtensionException($"Cannot extend parser with operator {@operator}, its {name} hole ({newHole.ToString()}) must either be empty or else use the same precedence groups as the existing operators in {@operator.precedenceGroup}, i.e. {existingHole}.");
+          throw new ParserExtensionException($"Cannot extend parser with operator {@operator}, its {name} hole ({newHole.ToString()}) must either be absent or else use the same precedence groups as the existing operators in {@operator.precedenceGroup}, i.e. {existingHole}.");
         }
         return unit;
       })
@@ -184,13 +208,17 @@ public static partial class MixFix {
   }
 
   public static void CheckSingleUseOfNames(PrecedenceDAG precedenceDAG, Operator @operator) {
-    // TODO: check that each name part isn't used elsewhere in a way that could cause ambiguity (use in a different namespace which is bracketed is okay, etc.). Probably something to do with paths reachable from the root.
+    // TODO: check that each name part isn't used elsewhere in a way that adding this operator would could cause ambiguity (use in a different namespace which is bracketed is okay, etc.). Probably something to do with paths reachable from the root.
   }
 
   public static void CheckNotAlias(PrecedenceDAG precedenceDAG, Operator @operator) {
     if (@operator.parts.Single().Bind(part => part.AsHole).IsSome) {
       throw new ParserExtensionException($"Cannot extend parser with operator {@operator}, it only contains a single hole. Aliases built like this are not supported for now.");
     }
+  }
+
+  public static void CheckAcyclic(PrecedenceDAG precedenceDAG, Operator @operator) {
+    // TODO: check that the DAG stays acyclic after adding this operator
   }
 
   public static PrecedenceDAG With(this PrecedenceDAG precedenceDAG, Operator @operator) {
@@ -204,6 +232,7 @@ public static partial class MixFix {
     CheckConsecutiveHoles(precedenceDAG, @operator);
     CheckSingleUseOfNames(precedenceDAG, @operator);
     CheckNotAlias(precedenceDAG, @operator);
+    CheckAcyclic(precedenceDAG, @operator);
     return precedenceDAG.lens[@operator.precedenceGroup].Add(@operator);
   }
 
@@ -214,23 +243,63 @@ public static partial class MixFix {
         associativity: associativity,
         parts: parts.ToImmutableList()));
 
-  public static Grammar OperatorToGrammar(Operator @operator) {
-    //@operator.
+  public static Grammar HoleToGrammar(PrecedenceDAG precedenceDAG, Hole precedenceGroups)
+  => Grammar.Or(
+      precedenceGroups.Select(precedenceGroup =>
+        DAGNodeToGrammar(precedenceDAG, precedenceDAG[precedenceGroup])));
+
+  public static Grammar PartToGrammar(PrecedenceDAG precedenceDAG, Part part)
+    => part.Match(
+      Name: name => Grammar.Terminal(name), 
+      Hole: precedenceGroups => HoleToGrammar(precedenceDAG, precedenceGroups));
+
+  public static Grammar OperatorToGrammar(PrecedenceDAG precedenceDAG, Operator @operator)
+    => Grammar.Sequence(
+      @operator.internalParts.Select(
+        part => PartToGrammar(precedenceDAG, part)));
+
+  public static Grammar OperatorsToGrammar(PrecedenceDAG precedenceDAG, IEnumerable<Operator> operators)
+    => Grammar.Or(
+      operators.Select(@operator =>
+        OperatorToGrammar(precedenceDAG, @operator)));
+
+  public static Grammar DAGNodeToGrammar(PrecedenceDAG precedenceDAG, DAGNode node) {
+    return Grammar.Or(ImmutableList<Grammar>(
+      OperatorsToGrammar(precedenceDAG, node.closed),
+      // successor_left nonassoc successor_right
+      Grammar.Sequence(
+        HoleToGrammar(precedenceDAG, node.leftmostHole_),
+        OperatorsToGrammar(precedenceDAG, node.infixNonAssociative),
+        HoleToGrammar(precedenceDAG, node.rightmostHole_)),
+      // (prefix | successor_left leftassoc)+ successor_right
+
+
+      // TODO: post-processsing of the leftassoc list.
+      Grammar.Sequence(
+        Grammar.RepeatOnePlus(
+          Grammar.Or(
+            OperatorsToGrammar(precedenceDAG, node.prefix),
+            Grammar.Sequence(
+              HoleToGrammar(precedenceDAG, node.leftmostHole_),
+              OperatorsToGrammar(precedenceDAG, node.infixRightAssociative)))),
+          HoleToGrammar(precedenceDAG, node.rightmostHole_)),
+      // successor_left (posftix | leftassoc successor_right)+
+
+
+      // TODO: post-processsing of the leftassoc list.
+      Grammar.Sequence(
+        HoleToGrammar(precedenceDAG, node.leftmostHole_),
+        Grammar.RepeatOnePlus(
+          Grammar.Or(
+            OperatorsToGrammar(precedenceDAG, node.postfix),
+            Grammar.Sequence(
+              OperatorsToGrammar(precedenceDAG, node.infixLeftAssociative),
+              HoleToGrammar(precedenceDAG, node.rightmostHole_)))))
+    ));
     throw new NotImplementedException();
   }
 
-  public static Grammar DAGNodeToGrammar(DAGNode node) {
-//    return Grammar.Or(ImmutableList<Grammar>(
-//      node.closed
-//      closed,
-//      succl nonassoc succr,
-//      (prefix | succl rightassoc)+ succr,
-//      succl (suffix | succr rightassoc)+
-//    ));
-    throw new NotImplementedException();
-  }
-
-  public static void DAGToGrammar(DAGNode precedenceDAG) {
+  public static void DAGToGrammar(PrecedenceDAG precedenceDAG) {
     
   }
 
