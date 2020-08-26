@@ -40,7 +40,7 @@ public static class VariantGenerator {
       var Ty = @case.Value;
       w($"    public static {name} {C}{Ty == null
                 ? $" = new Cases.{C}()"
-                : $"({Ty} value) => new Cases.{C}(value)"};");
+                : $"({Ty} value, params Immutable.Uninstantiatable[] _) => new Cases.{C}(value)"};");
     }
   }
 

@@ -15,29 +15,36 @@ using static MixFix.Fixity;
 
 public static partial class MixFix {
   public partial class Grammar {
-    public static Grammar Sequence(params Grammar[] xs) {
-      var filteredXs = xs.Where(x => !x.IsEmpty);
-      if (filteredXs.Count() == 1) {
-        return filteredXs.Single().ElseThrow(() => new Exception("TODO: use an either to prove that this is safe."));
-      } else {
-        return Grammar.Sequence(filteredXs);
-      }
-    }
+    public static Grammar Sequence(params Grammar[] xs)
+      => Sequence(xs.ToImmutableList());
 
     public static Grammar Or(params Grammar[] xs)
-      => OrCleaned(xs.ToImmutableList());
+      => Or(xs.ToImmutableList());
 
-    // TODO: instead hide the default constructor for Or.
-    public static Grammar OrCleaned(IEnumerable<Grammar> xs) {
+    public static Grammar Sequence(IEnumerable<Grammar> xs) {
       var filteredXs = xs.Where(x => !x.IsEmpty);
       if (filteredXs.Count() == 1) {
         return filteredXs.Single().ElseThrow(() => new Exception("TODO: use an either to prove that this is safe."));
       } else {
-        return Grammar.Or(filteredXs);
+        return new Grammar.Cases.Sequence(filteredXs);
       }
     }
 
-    public static Grammar Empty = Or();
+    public static Grammar Or(IEnumerable<Grammar> xs) {
+      var filteredXs = xs.Where(x => !x.IsEmpty);
+      if (filteredXs.Count() == 1) {
+        return filteredXs.Single().ElseThrow(() => new Exception("TODO: use an either to prove that this is safe."));
+      } else {
+        return new Grammar.Cases.Or(filteredXs);
+      }
+    }
+
+    public static Grammar RepeatOnePlus(Grammar g)
+      => g.IsEmpty
+        ? Grammar.Empty
+        : new Grammar.Cases.RepeatOnePlus(g);
+
+    public static Grammar Empty = new Grammar.Cases.Or();
 
     public bool IsEmpty {
       get => this.Match(
@@ -310,7 +317,7 @@ public static partial class MixFix {
         parts: parts.ToImmutableList()));
 
   public static Grammar ToGrammar(this Hole precedenceGroups)
-    => Grammar.OrCleaned(
+    => Grammar.Or(
          precedenceGroups.Select(precedenceGroup =>
            Grammar.Rule(precedenceGroup)));
 
@@ -324,7 +331,7 @@ public static partial class MixFix {
       @operator.internalParts.Select(part => part.ToGrammar()));
 
   public static Grammar ToGrammar(this IEnumerable<Operator> operators)
-    => Grammar.OrCleaned(
+    => Grammar.Or(
       operators.Select(@operator => @operator.ToGrammar()));
 
   public static Grammar ToGrammar(this DAGNode node) {
