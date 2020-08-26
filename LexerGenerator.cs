@@ -16,6 +16,8 @@ public static class LexerGenerator {
           Case("Decimal"),
           Case("Ident"),
           Case("And"),
+          Case("Plus"),
+          Case("Times"),
           Case("Eq"),
           Case("Space"),
           Case("String"),

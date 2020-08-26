@@ -16,7 +16,8 @@ public static class ParserGenerator {
           Case("Grammar",              "RepeatOnePlus"),
           Case("IEnumerable<Grammar>", "Or"),
           Case("IEnumerable<Grammar>", "Sequence"),
-          Case("S",                    "Terminal")),
+          Case("S",                    "Terminal"),
+          Case("string",               "Rule")),
 
         Variant("Fixity",
           Case("Closed"),

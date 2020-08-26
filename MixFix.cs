@@ -13,19 +13,83 @@ using Hole = System.Collections.Immutable.ImmutableHashSet<
 using static Global;
 using static MixFix.Fixity;
 
-public class Foo {
-  public string v;
-  public static implicit operator Foo(string s) => new Foo{v=s};
-  public static Foo operator |(Foo a, string b) => a.v + b;
-}
-
 public static partial class MixFix {
   public partial class Grammar {
-    public static Grammar Sequence(params Grammar[] xs)
-      => Grammar.Sequence(xs.ToImmutableList());
+    public static Grammar Sequence(params Grammar[] xs) {
+      var filteredXs = xs.Where(x => !x.IsEmpty);
+      if (filteredXs.Count() == 1) {
+        return filteredXs.Single().ElseThrow(() => new Exception("TODO: use an either to prove that this is safe."));
+      } else {
+        return Grammar.Sequence(filteredXs);
+      }
+    }
 
     public static Grammar Or(params Grammar[] xs)
-      => Grammar.Or(xs.ToImmutableList());
+      => OrCleaned(xs.ToImmutableList());
+
+    // TODO: instead hide the default constructor for Or.
+    public static Grammar OrCleaned(IEnumerable<Grammar> xs) {
+      var filteredXs = xs.Where(x => !x.IsEmpty);
+      if (filteredXs.Count() == 1) {
+        return filteredXs.Single().ElseThrow(() => new Exception("TODO: use an either to prove that this is safe."));
+      } else {
+        return Grammar.Or(filteredXs);
+      }
+    }
+
+    public static Grammar Empty = Or();
+
+    public bool IsEmpty {
+      get => this.Match(
+        Or: l => l.Count() == 0,
+        Sequence: l => l.Count() == 0,
+        RepeatOnePlus: g => g.IsEmpty,
+        Terminal: t => false,
+        Rule: r => false
+      );
+    }
+
+    public static Grammar operator |(Grammar a, Grammar b)
+      => Or(a, b);
+
+    public static implicit operator Grammar((Grammar a, Grammar b) gs)
+      => Sequence(gs.a, gs.b);
+
+    public static implicit operator Grammar((Grammar a, Grammar b, Grammar c) gs)
+      => Sequence(gs.a, gs.b, gs.c);
+
+    public static bool operator true(Grammar g) => !g.IsEmpty;
+    public static bool operator false(Grammar g) => g.IsEmpty;
+
+    public Grammar this[string multiplicity] {
+      get {
+        if (multiplicity != "+") {
+          throw new Exception("Unexpected multiplicity");
+        } else {
+          if (this.IsEmpty) {
+            return Or();
+          } else {
+            return RepeatOnePlus(this);
+          }
+        }
+      }
+    }
+
+    private string Paren(bool paren, string s)
+      => paren ? $"({s})" : s;
+
+    string CustomToString()
+      => this.Match<string>(
+        Or: l => l.Count() == 0
+          ? "Or(Empty)"
+          : Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(" | ")),
+        Sequence: l => l.Count() == 0
+          ? "Sequence(Empty)"
+          : Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(",")),
+        RepeatOnePlus: g => $"({g.Str()})+",
+        Terminal: t => t.Str(),
+        Rule: r => r
+      );
   }
 
   public partial class Operator {
@@ -126,11 +190,13 @@ public static partial class MixFix {
     }
 
     // TODO: cache this for improved complexity
+    // TODO: find a better name
     public ImmutableHashSet<string> leftmostHole_ {
       get => leftmostHole.Else(ImmutableHashSet<string>.Empty);
     }
 
     // TODO: cache this for improved complexity
+    // TODO: find a better name
     public ImmutableHashSet<string> rightmostHole_ {
       get => rightmostHole.Else(ImmutableHashSet<string>.Empty);
     }
@@ -243,67 +309,47 @@ public static partial class MixFix {
         associativity: associativity,
         parts: parts.ToImmutableList()));
 
-  public static Grammar HoleToGrammar(PrecedenceDAG precedenceDAG, Hole precedenceGroups)
-  => Grammar.Or(
-      precedenceGroups.Select(precedenceGroup =>
-        DAGNodeToGrammar(precedenceDAG, precedenceDAG[precedenceGroup])));
+  public static Grammar ToGrammar(this Hole precedenceGroups)
+    => Grammar.OrCleaned(
+         precedenceGroups.Select(precedenceGroup =>
+           Grammar.Rule(precedenceGroup)));
 
-  public static Grammar PartToGrammar(PrecedenceDAG precedenceDAG, Part part)
+  public static Grammar ToGrammar(this Part part)
     => part.Match(
       Name: name => Grammar.Terminal(name), 
-      Hole: precedenceGroups => HoleToGrammar(precedenceDAG, precedenceGroups));
+      Hole: precedenceGroups => precedenceGroups.ToGrammar());
 
-  public static Grammar OperatorToGrammar(PrecedenceDAG precedenceDAG, Operator @operator)
+  public static Grammar ToGrammar(this Operator @operator)
     => Grammar.Sequence(
-      @operator.internalParts.Select(
-        part => PartToGrammar(precedenceDAG, part)));
+      @operator.internalParts.Select(part => part.ToGrammar()));
 
-  public static Grammar OperatorsToGrammar(PrecedenceDAG precedenceDAG, IEnumerable<Operator> operators)
-    => Grammar.Or(
-      operators.Select(@operator =>
-        OperatorToGrammar(precedenceDAG, @operator)));
+  public static Grammar ToGrammar(this IEnumerable<Operator> operators)
+    => Grammar.OrCleaned(
+      operators.Select(@operator => @operator.ToGrammar()));
 
-  public static Grammar DAGNodeToGrammar(PrecedenceDAG precedenceDAG, DAGNode node) {
-    return Grammar.Or(ImmutableList<Grammar>(
-      OperatorsToGrammar(precedenceDAG, node.closed),
-      // successor_left nonassoc successor_right
-      Grammar.Sequence(
-        HoleToGrammar(precedenceDAG, node.leftmostHole_),
-        OperatorsToGrammar(precedenceDAG, node.infixNonAssociative),
-        HoleToGrammar(precedenceDAG, node.rightmostHole_)),
-      // (prefix | successor_left leftassoc)+ successor_right
+  public static Grammar ToGrammar(this DAGNode node) {
+    var lsucc = node.leftmostHole_.ToGrammar();
+    var rsucc = node.rightmostHole_.ToGrammar();
+    var closed = node.closed.ToGrammar();
+    var nonAssoc = node.infixNonAssociative.ToGrammar();
+    var prefix = node.prefix.ToGrammar();
+    var postfix = node.postfix.ToGrammar();
+    var infixl = node.infixLeftAssociative.ToGrammar();
+    var infixr = node.infixRightAssociative.ToGrammar();
 
-
+    // TODO: BUG: only include these parts if there are
+    // any operators with that fixity.
+    return
+        closed
+      | (nonAssoc ? (lsucc, nonAssoc, rsucc) : Grammar.Empty)
       // TODO: post-processsing of the leftassoc list.
-      Grammar.Sequence(
-        Grammar.RepeatOnePlus(
-          Grammar.Or(
-            OperatorsToGrammar(precedenceDAG, node.prefix),
-            Grammar.Sequence(
-              HoleToGrammar(precedenceDAG, node.leftmostHole_),
-              OperatorsToGrammar(precedenceDAG, node.infixRightAssociative)))),
-          HoleToGrammar(precedenceDAG, node.rightmostHole_)),
-      // successor_left (posftix | leftassoc successor_right)+
-
-
+      | ((prefix || infixr) ? ((prefix | (lsucc, infixr))["+"], rsucc) : Grammar.Empty)
       // TODO: post-processsing of the leftassoc list.
-      Grammar.Sequence(
-        HoleToGrammar(precedenceDAG, node.leftmostHole_),
-        Grammar.RepeatOnePlus(
-          Grammar.Or(
-            OperatorsToGrammar(precedenceDAG, node.postfix),
-            Grammar.Sequence(
-              OperatorsToGrammar(precedenceDAG, node.infixLeftAssociative),
-              HoleToGrammar(precedenceDAG, node.rightmostHole_)))))
-    ));
-    throw new NotImplementedException();
+      | ((postfix || infixl) ? (lsucc, (postfix | (infixl, rsucc))["+"]) : Grammar.Empty);
   }
 
-  public static void DAGToGrammar(PrecedenceDAG precedenceDAG) {
-    
-  }
-
-  public static void RecursiveDescent(IEnumerable<Lexeme> e) {
-
-  }
+  public static ImmutableDictionary<string, Grammar> DAGToGrammar(PrecedenceDAG precedenceDAG)
+    => precedenceDAG.ToImmutableDictionary(
+      node => node.Key,
+      node => node.Value.ToGrammar());
 }

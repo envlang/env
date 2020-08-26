@@ -10,7 +10,7 @@ using static Global;
 
 public static partial class Parser {
   public static Ast.Expr Parse(string source) {
-    Log(DefaultGrammar.DefaultPrecedenceDAG.ToString());
+    Log(MixFix.DAGToGrammar(DefaultGrammar.DefaultPrecedenceDAG).Str());
     return Lexer.Lex(source)
       .SelectMany(lexeme =>
         lexeme.state.Match(
@@ -18,6 +18,8 @@ public static partial class Parser {
           String: () => Ast.Expr.String(lexeme.lexeme).Singleton(),
           Ident: () => Enumerable.Empty<Ast.Expr>(), // TODO
           And: () => Enumerable.Empty<Ast.Expr>(), // TODO
+          Plus: () => Enumerable.Empty<Ast.Expr>(), // TODO
+          Times: () => Enumerable.Empty<Ast.Expr>(), // TODO
           Space: () => Enumerable.Empty<Ast.Expr>(), // ignore
           Eq: () => Enumerable.Empty<Ast.Expr>(), // TODO
           End: () => Enumerable.Empty<Ast.Expr>(), // TODO
@@ -29,6 +31,10 @@ public static partial class Parser {
       .Single()
       .ElseThrow(() => new ParserErrorException(
         "empty file or more than one expression in file."));
+  }
+
+  public static void RecursiveDescent(IEnumerable<Lexeme> e) {
+
   }
 }
 

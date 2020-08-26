@@ -22,8 +22,11 @@ public static class ToStringImplementations {
   public static string Str<T>(this ImmutableList<MixFix.Part> l)
     => $"ImmutableList({l.Select(x => x.Str()).JoinWith(", ")})";
 
-  public static string Str<T>(this ImmutableHashSet<String> h)
-    => $"ImmutableHashSet({h.Select(x => x.Str<String>()).JoinWith(", ")})";
+  public static string Str<T>(this ImmutableHashSet<string> h)
+    => $"ImmutableHashSet({h.Select(x => x.Str<string>()).JoinWith(", ")})";
+
+  public static string Str<Grammar>(this ImmutableDictionary<string,Grammar> h)
+    => $"ImmutableDictionary(\n{h.Select(x => $"  {x.Key.Str<string>()}:{x.Value.Str<Grammar>()}").JoinWith(",\n")}\n)";
 
   public static string Str<T>(this string s) => $"\"{s}\"";
 
