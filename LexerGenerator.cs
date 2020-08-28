@@ -9,6 +9,11 @@ public static class LexerGenerator {
       "}",
       "Lexer.",
       Types(
+        Record("Lexeme",
+          Field("S", "state"),
+          // TODO: maybe keep the lexeme as a list of
+          // grapheme clusters
+          Field("string", "lexeme")),
         Variant("S",
           Case("End"),
           Case("Space"),

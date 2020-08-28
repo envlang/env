@@ -12,12 +12,21 @@ public static class ParserGenerator {
       "}",
       "MixFix.",
       Types(
-        Variant("Grammar",
-          Case("Grammar",              "RepeatOnePlus"),
-          Case("IEnumerable<Grammar>", "Or"),
-          Case("IEnumerable<Grammar>", "Sequence"),
-          Case("S",                    "Terminal"),
-          Case("string",               "Rule")),
+        // TODO: maybe instead of going through a
+        // Rule node we could just memoize the ToGrammar1
+        // function, and attach an optional name to nodes
+        Variant("Grammar1",
+          Case("Grammar1",              "RepeatOnePlus"),
+          Case("IEnumerable<Grammar1>", "Or"),
+          Case("IEnumerable<Grammar1>", "Sequence"),
+          Case("S",                     "Terminal"),
+          Case("string",                "Rule")),
+
+        Variant("Grammar2",
+          Case("Grammar2",              "RepeatOnePlus"),
+          Case("IEnumerable<Grammar2>", "Or"),
+          Case("IEnumerable<Grammar2>", "Sequence"),
+          Case("S",                     "Terminal")),
 
         Variant("Fixity",
           Case("Closed"),

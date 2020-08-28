@@ -14,37 +14,37 @@ using static Global;
 using static MixFix.Fixity;
 
 public static partial class MixFix {
-  public partial class Grammar {
-    public static Grammar Sequence(params Grammar[] xs)
+  public partial class Grammar1 {
+    public static Grammar1 Sequence(params Grammar1[] xs)
       => Sequence(xs.ToImmutableList());
 
-    public static Grammar Or(params Grammar[] xs)
+    public static Grammar1 Or(params Grammar1[] xs)
       => Or(xs.ToImmutableList());
 
-    public static Grammar Sequence(IEnumerable<Grammar> xs) {
+    public static Grammar1 Sequence(IEnumerable<Grammar1> xs) {
       var filteredXs = xs.Where(x => !x.IsEmpty);
       if (filteredXs.Count() == 1) {
         return filteredXs.Single().ElseThrow(() => new Exception("TODO: use an either to prove that this is safe."));
       } else {
-        return new Grammar.Cases.Sequence(filteredXs);
+        return new Grammar1.Cases.Sequence(filteredXs);
       }
     }
 
-    public static Grammar Or(IEnumerable<Grammar> xs) {
+    public static Grammar1 Or(IEnumerable<Grammar1> xs) {
       var filteredXs = xs.Where(x => !x.IsEmpty);
       if (filteredXs.Count() == 1) {
         return filteredXs.Single().ElseThrow(() => new Exception("TODO: use an either to prove that this is safe."));
       } else {
-        return new Grammar.Cases.Or(filteredXs);
+        return new Grammar1.Cases.Or(filteredXs);
       }
     }
 
-    public static Grammar RepeatOnePlus(Grammar g)
+    public static Grammar1 RepeatOnePlus(Grammar1 g)
       => g.IsEmpty
-        ? Grammar.Empty
-        : new Grammar.Cases.RepeatOnePlus(g);
+        ? Grammar1.Empty
+        : new Grammar1.Cases.RepeatOnePlus(g);
 
-    public static Grammar Empty = new Grammar.Cases.Or();
+    public static Grammar1 Empty = new Grammar1.Cases.Or(Enumerable.Empty<Grammar1>());
 
     public bool IsEmpty {
       get => this.Match(
@@ -56,19 +56,19 @@ public static partial class MixFix {
       );
     }
 
-    public static Grammar operator |(Grammar a, Grammar b)
+    public static Grammar1 operator |(Grammar1 a, Grammar1 b)
       => Or(a, b);
 
-    public static implicit operator Grammar((Grammar a, Grammar b) gs)
+    public static implicit operator Grammar1((Grammar1 a, Grammar1 b) gs)
       => Sequence(gs.a, gs.b);
 
-    public static implicit operator Grammar((Grammar a, Grammar b, Grammar c) gs)
+    public static implicit operator Grammar1((Grammar1 a, Grammar1 b, Grammar1 c) gs)
       => Sequence(gs.a, gs.b, gs.c);
 
-    public static bool operator true(Grammar g) => !g.IsEmpty;
-    public static bool operator false(Grammar g) => g.IsEmpty;
+    public static bool operator true(Grammar1 g) => !g.IsEmpty;
+    public static bool operator false(Grammar1 g) => g.IsEmpty;
 
-    public Grammar this[string multiplicity] {
+    public Grammar1 this[string multiplicity] {
       get {
         if (multiplicity != "+") {
           throw new Exception("Unexpected multiplicity");
@@ -296,7 +296,7 @@ public static partial class MixFix {
 
   public static PrecedenceDAG With(this PrecedenceDAG precedenceDAG, Operator @operator) {
     // This is where all the checks are done to ensure that the
-    //   resulting grammar is well-formed and assuredly unambiguous.
+    //   resulting grammar1 is well-formed and assuredly unambiguous.
     // Future extension idea: add an "ambiguous" keyword to
     //   alleviate some restrictions.
     CheckLeftmostHole(precedenceDAG, @operator);
@@ -316,47 +316,63 @@ public static partial class MixFix {
         associativity: associativity,
         parts: parts.ToImmutableList()));
 
-  public static Grammar ToGrammar(this Hole precedenceGroups)
-    => Grammar.Or(
+  public static Grammar1 ToGrammar1(this Hole precedenceGroups)
+    => Grammar1.Or(
          precedenceGroups.Select(precedenceGroup =>
-           Grammar.Rule(precedenceGroup)));
+           Grammar1.Rule(precedenceGroup)));
 
-  public static Grammar ToGrammar(this Part part)
+  public static Grammar1 ToGrammar1(this Part part)
     => part.Match(
-      Name: name => Grammar.Terminal(name), 
-      Hole: precedenceGroups => precedenceGroups.ToGrammar());
+      Name: name => Grammar1.Terminal(name), 
+      Hole: precedenceGroups => precedenceGroups.ToGrammar1());
 
-  public static Grammar ToGrammar(this Operator @operator)
-    => Grammar.Sequence(
-      @operator.internalParts.Select(part => part.ToGrammar()));
+  public static Grammar1 ToGrammar1(this Operator @operator)
+    => Grammar1.Sequence(
+      @operator.internalParts.Select(part => part.ToGrammar1()));
 
-  public static Grammar ToGrammar(this IEnumerable<Operator> operators)
-    => Grammar.Or(
-      operators.Select(@operator => @operator.ToGrammar()));
+  public static Grammar1 ToGrammar1(this IEnumerable<Operator> operators)
+    => Grammar1.Or(
+      operators.Select(@operator => @operator.ToGrammar1()));
 
-  public static Grammar ToGrammar(this DAGNode node) {
-    var lsucc = node.leftmostHole_.ToGrammar();
-    var rsucc = node.rightmostHole_.ToGrammar();
-    var closed = node.closed.ToGrammar();
-    var nonAssoc = node.infixNonAssociative.ToGrammar();
-    var prefix = node.prefix.ToGrammar();
-    var postfix = node.postfix.ToGrammar();
-    var infixl = node.infixLeftAssociative.ToGrammar();
-    var infixr = node.infixRightAssociative.ToGrammar();
+  public static Grammar1 ToGrammar1(this DAGNode node) {
+    var lsucc = node.leftmostHole_.ToGrammar1();
+    var rsucc = node.rightmostHole_.ToGrammar1();
+    var closed = node.closed.ToGrammar1();
+    var nonAssoc = node.infixNonAssociative.ToGrammar1();
+    var prefix = node.prefix.ToGrammar1();
+    var postfix = node.postfix.ToGrammar1();
+    var infixl = node.infixLeftAssociative.ToGrammar1();
+    var infixr = node.infixRightAssociative.ToGrammar1();
 
     // TODO: BUG: only include these parts if there are
     // any operators with that fixity.
     return
         closed
-      | (nonAssoc ? (lsucc, nonAssoc, rsucc) : Grammar.Empty)
+      | (nonAssoc ? (lsucc, nonAssoc, rsucc) : Grammar1.Empty)
       // TODO: post-processsing of the leftassoc list.
-      | ((prefix || infixr) ? ((prefix | (lsucc, infixr))["+"], rsucc) : Grammar.Empty)
+      | ((prefix || infixr) ? ((prefix | (lsucc, infixr))["+"], rsucc) : Grammar1.Empty)
       // TODO: post-processsing of the leftassoc list.
-      | ((postfix || infixl) ? (lsucc, (postfix | (infixl, rsucc))["+"]) : Grammar.Empty);
+      | ((postfix || infixl) ? (lsucc, (postfix | (infixl, rsucc))["+"]) : Grammar1.Empty);
   }
 
-  public static ImmutableDictionary<string, Grammar> DAGToGrammar(PrecedenceDAG precedenceDAG)
-    => precedenceDAG.ToImmutableDictionary(
+  public static EquatableDictionary<string, Grammar1> ToGrammar1(this PrecedenceDAG precedenceDAG)
+    => precedenceDAG.ToEquatableDictionary(
       node => node.Key,
-      node => node.Value.ToGrammar());
+      node => node.Value.ToGrammar1());
+
+  private static Grammar2 Recur(Func<Grammar1, EquatableDictionary<string, Grammar1>, Grammar2> recur, Grammar1 grammar1, EquatableDictionary<string, Grammar1> labeled)
+    => grammar1.Match<Grammar2>(
+      // TODO: throw exception if lookup fails
+      Rule:          r => recur(labeled[r], labeled),
+      Terminal:      t => Grammar2.Terminal(t),
+      Sequence:      l => Grammar2.Sequence(l.Select(g => recur(g, labeled))),
+      Or:            l => Grammar2.Or(l.Select(g => recur(g, labeled))),
+      RepeatOnePlus: g => Grammar2.RepeatOnePlus(recur(g, labeled))
+    );
+
+  public static Grammar2 ToGrammar2(this EquatableDictionary<string, Grammar1> labeled)
+    => Func.YMemoize<Grammar1, EquatableDictionary<string, Grammar1>, Grammar2>(Recur)(Grammar1.Rule("program"), labeled);
+
+  public static Grammar2 ToGrammar2(this PrecedenceDAG precedenceDAG)
+    => precedenceDAG.ToGrammar1().ToGrammar2();
 }

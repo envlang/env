@@ -49,7 +49,9 @@ public static class VariantGenerator {
       var C = @case.Key;
       var Ty = @case.Value;
       // This method is overloaded by the corresponding case's class.
-      w($"    public virtual Immutable.Option<{Ty == null ? "Immutable.Unit" : Ty}> As{C} {{ get => Immutable.Option.None<{Ty == null ? "Immutable.Unit" : Ty}>(); }}");
+      w($"    public virtual Immutable.Option<{Ty == null ? "Immutable.Unit" : Ty}> As{C} {{");
+      w($"      get => Immutable.Option.None<{Ty == null ? "Immutable.Unit" : Ty}>();");
+      w($"    }}");
     }
   }
 
@@ -106,7 +108,7 @@ public static class VariantGenerator {
     w($"    public override string ToString()");
     w($"      => this.CustomToString();");
     w($"    private string CustomToString(params Immutable.Uninstantiatable[] _)");
-    w($"      => GetTag() + GetValue().Match(some: x => $\"({{x}})\", none: () => \"\");");
+    w($"      => GetTag() + GetValue().Match(Some: x => $\"({{x}})\", None: () => \"\");");
     w($"    public string Str() => this.ToString();");
   }
 
@@ -118,7 +120,14 @@ public static class VariantGenerator {
   }
 
   private static void CaseConstructor(this Action<string> w, string qualifier, string name, string C, string Ty) {
-    w($"         public {C}({Ty == null ? "" : $"{Ty} value"}) {{ {Ty == null ? "" : $"this.value = value; "}}}");
+    w($"         public {C}({Ty == null ? "" : $"{Ty} value"}) {{");
+    w($"           {Ty == null ? "" : $"this.value = value; "}");
+    if (Ty == null) {
+      w($"           this.hashCode = HashCode.Combine(\"{C}\");");
+    } else {
+      w($"           this.hashCode = HashCode.Combine(\"{C}\", this.value);");
+    }
+    w($"         }}");
   }
 
   private static void CaseMatch_(this Action<string> w, string qualifier, string name, string C, string Ty) {
@@ -126,28 +135,22 @@ public static class VariantGenerator {
   }
 
   private static void CaseAs(this Action<string> w, string qualifier, string name, string C, string Ty) {
-    w($"         public override Immutable.Option<{Ty == null ? "Immutable.Unit" : Ty}> As{C} {{ get => Immutable.Option.Some<{Ty == null ? "Immutable.Unit" : Ty}>({Ty == null ? "Immutable.Unit.unit" : "this.value"}); }}");
+    w($"         public override Immutable.Option<{Ty == null ? "Immutable.Unit" : Ty}> As{C} {{");
+    w($"           get => Immutable.Option.Some<{Ty == null ? "Immutable.Unit" : Ty}>({Ty == null ? "Immutable.Unit.unit" : "this.value"});");
+    w($"         }}");
   }
 
   private static void CaseEquality(this Action<string> w, string qualifier, string name, string C, string Ty) {
-      w($"         public static bool operator ==({C} a, {C} b)");
-      w($"           => Equality.Operator(a, b);");
-      w($"         public static bool operator !=({C} a, {C} b)");
-      w($"           => !(a == b);");
-      w($"         public override bool Equals(object other)");
-    if (Ty == null) {
-      w($"           => Equality.Untyped<{C}>(this, other, x => x as {C});");
-    } else {
-      w($"           => Equality.Untyped<{C}>(this, other, x => x as {C}, x => x.value);");
-    }
+    w($"         public static bool operator ==({C} a, {C} b)");
+    w($"           => Equality.Operator(a, b);");
+    w($"         public static bool operator !=({C} a, {C} b)");
+    w($"           => !(a == b);");
+    w($"         public override bool Equals(object other)");
+    w($"           => Equality.Untyped<{C}>(this, other, x => x as {C}, x => x.hashCode{(Ty == null) ? "" : ", x => x.value"});");
     w($"         public override bool Equals({name} other)");
     w($"           => Equality.Equatable<{name}>(this, other);");
-    w($"         public override int GetHashCode()");
-    if (Ty == null) {
-      w($"           => HashCode.Combine(\"{C}\");");
-    } else {
-      w($"           => HashCode.Combine(\"{C}\", this.value);");
-    }
+    w($"         private readonly int hashCode;");
+    w($"         public override int GetHashCode() => hashCode;");
   }
 
   private static void Cases(this Action<string> w, string qualifier, string name, Variant variant) {

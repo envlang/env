@@ -2,7 +2,7 @@ namespace Immutable {
   using System;
 
   public interface Option<out T> : System.Collections.Generic.IEnumerable<T> {
-    U Match_<U>(Func<T, U> some, Func<U> none);
+    U Match_<U>(Func<T, U> Some, Func<U> None);
     bool IsSome { get; }
     bool IsNone { get; }
   }
@@ -49,31 +49,39 @@ namespace Immutable {
   public static class OptionExtensionMethods {
     public static Option<T> Some<T>(this T value) => Option.Some<T>(value);
     
-    public static U Match<T, U>(this Option<T> o, Func<T, U> some, Func<U> none)
-      => o.Match_(some, none);
+    public static U Match<T, U>(this Option<T> o, Func<T, U> Some, Func<U> None)
+      => o.Match_(Some: Some,
+                  None: None);
 
-    public static U Match<T, U>(this Option<T> o, Func<T, U> some, U none)
-      => o.Match_(some, () => none);
+    public static U Match<T, U>(this Option<T> o, Func<T, U> Some, U None)
+      => o.Match_(Some: Some,
+                  None: () => None);
 
     public static Option<U> Map<T, U>(this Option<T> o, Func<T, U> some)
-      => o.Match_(value => some(value).Some(), () => Option.None<U>());
+      => o.Match_(Some: value => some(value).Some(),
+                  None: () => Option.None<U>());
 
     public static Option<U> IfSome<T, U>(this Option<T> o, Func<T, U> some)
       => o.Map(some);
 
     public static Option<U> Bind<T, U>(this Option<T> o, Func<T, Option<U>> f)
-      => o.Match_(some => f(some), () => Option.None<U>());
+      => o.Match_(Some: some => f(some),
+                  None: () => Option.None<U>());
 
     public static T Else<T>(this Option<T> o, Func<T> none)
-      => o.Match_(some => some, none);
+      => o.Match_(Some: some => some,
+                  None: none);
 
     public static T Else<T>(this Option<T> o, T none)
-      => o.Match_(some => some, () => none);
+      => o.Match_(Some: some => some,
+                  None: () => none);
 
     public static Option<T> Else<T>(this Option<T> o, Func<Option<T>> none)
-      => o.Match_(value => value.Some(), none);
+      => o.Match_(Some: value => value.Some(),
+                  None: none);
 
     public static T ElseThrow<T>(this Option<T> o, Func<Exception> none)
-      => o.Match_(value => value, () => throw none());
+      => o.Match_(Some: value => value,
+                  None: () => throw none());
   }
 }

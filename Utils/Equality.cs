@@ -6,7 +6,9 @@ public static class Equality {
 
   // T can be any supertype of the instances passed to the == operator.
   public static bool Operator(Object a, Object b) {
-    if (Object.ReferenceEquals(a, null)) {
+    if (Object.ReferenceEquals(a, b)) {
+      return true;
+    } else if (Object.ReferenceEquals(a, null)) {
       return Object.ReferenceEquals(b, null);
     } else if (Object.ReferenceEquals(b, null)) {
       return false;
@@ -18,8 +20,11 @@ public static class Equality {
   // T must be the exact type of the receiver object whose
   // Object.Equals(Object other) method is invoking
   // Untyped(this, other).
-  public static bool Untyped<T>(T a, Object b, Func<Object, T> cast, params Func<T, Object>[] fieldAccessors) {
-    if (Object.ReferenceEquals(a, null)) {
+  public static bool Untyped<T>(T a, Object b, Func<Object, T> cast, Func<T, int> hashCode, params Func<T, T, bool>[] comparers) {
+    if (Object.ReferenceEquals(a, b)) {
+      // Short path when the two references are the same.
+      return true;
+    } else if (Object.ReferenceEquals(a, null)) {
       return Object.ReferenceEquals(b, null);
     } else if (Object.ReferenceEquals(b, null)) {
       return false;
@@ -28,27 +33,47 @@ public static class Equality {
       if (Object.ReferenceEquals(castB, null)) {
         return false;
       } else {
-        foreach (var accessor in fieldAccessors) {
-          var aFieldValue = accessor(a);
-          var bFieldValue = accessor(castB);
-          if (Object.ReferenceEquals(aFieldValue, null)) {
-            return Object.ReferenceEquals(bFieldValue, null);
-          } else if (Object.ReferenceEquals(bFieldValue, null)) {
-            return false;
-          } else {
-            return aFieldValue.Equals(bFieldValue);
+        if (hashCode(a) != hashCode(castB)) {
+          return false;
+        } else {
+          foreach (var comparer in comparers) {
+            if (!comparer(a, castB)) {
+              return false;
+            } else {
+              // continue.
+            }
           }
+          return true;
         }
-        return true;
       }
     }
   }
+
+  public static bool Untyped<T>(T a, Object b, Func<Object, T> cast, Func<T, int> hashCode, params Func<T, Object>[] fieldAccessors)
+    => Untyped<T>(
+         a,
+         b,
+         cast,
+         hashCode,
+         (aa, bb) =>
+           fieldAccessors.All(
+             accessor =>
+               Equality.Operator(
+                 accessor(aa),
+                 accessor(bb))));
+
+  // common method when there are no fields or comparers.
+  public static bool Untyped<T>(T a, Object b, Func<Object, T> cast, Func<T, int> hashCode)
+    => Untyped<T>(a, b, cast, hashCode, (aa, bb) => true);
 
   // T must be the exact type of the receiver object whose
   // IEquatable<U>.Equals(U other) method is invoking
   // Equatable(this, other).
   public static bool Equatable<T>(T a, Object b) where T : IEquatable<T> {
-    if (Object.ReferenceEquals(a, null)) {
+    if (Object.ReferenceEquals(a, b)) {
+      // Short path when the two references are the same.
+      return true;
+    } else if (Object.ReferenceEquals(a, null)) {
       return Object.ReferenceEquals(b, null);
     } else if (Object.ReferenceEquals(b, null)) {
       return false;

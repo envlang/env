@@ -18,8 +18,10 @@ public static partial class Lexer {
            description: cat.ToString(),
            test: c => c.codePoints
                        .First()
-                      .Match(some: (x => x.UnicodeCategory(0) == cat),
-                             none: false),
+                      .Match(
+                        Some: x =>
+                          x.UnicodeCategory(0) == cat,
+                        None: false),
            throughState: throughState,
            newState: newState ?? throughState);
 
@@ -40,8 +42,9 @@ public static partial class Lexer {
            description: CharDescription(c),
            test: x => x.codePoints
                        .Single()
-                       .Match(some: xx => xx == c.ToString(),
-                              none: false),
+                       .Match(
+                         Some: xx => xx == c.ToString(),
+                         None: false),
            throughState: throughState,
            newState: newState ?? throughState);
 
@@ -52,7 +55,8 @@ public static partial class Lexer {
         description: ", ".Join(cs.Select(CharDescription)),
         test: x => x.codePoints
                     .Single()
-                    .Match(some: csl.Contains, none: false),
+                    .Match(Some: csl.Contains,
+                           None: false),
         throughState: throughState,
         newState: newState ?? throughState);
     }
@@ -117,15 +121,8 @@ public static partial class Lexer {
               : kv.Value);
   }
 
-  public struct Lexeme {
-    public readonly S state;
-    // TODO: maybe keep this as a list of grapheme clusters
-    public readonly string lexeme;
-    public Lexeme(S state, string lexeme) {
-      this.state = state;
-      this.lexeme = lexeme;
-    }
-    public override string ToString() {
+  public partial class Lexeme {
+    private string CustomToString() {
       return $"new Lexeme({state}, \"{lexeme}\")";
     }
   }
@@ -158,8 +155,8 @@ public static partial class Lexer {
     var actual = (gc.endOfFile ? "" : "grapheme cluster ") + gc.Description();
     var cat = gc.codePoints
                  .First()
-                 .Match(some: (x => x.UnicodeCategory(0).ToString()),
-                        none: "None (empty string)");
+                 .Match(Some: x => x.UnicodeCategory(0).ToString(),
+                        None: "None (empty string)");
     return new ParserErrorException(
       $"Unexpected {actual} (Unicode category {cat}) while the lexer was in state {state}: expected one of {expected}{Environment.NewLine}{context}  <--HERE  {rest}"
     );

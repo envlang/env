@@ -8,16 +8,20 @@ run: main.exe Makefile
 	MONO_PATH=/usr/lib/mono/4.5/:/usr/lib/mono/4.5/Facades/ mono $<
 
 main.exe: $(CS) $(GENERATED) Makefile
-	mcs -debug+ -out:$@ \
+	@echo 'Compiling…'
+	@mcs -debug+ -out:$@ \
    /reference:/usr/lib/mono/4.5/System.Collections.Immutable.dll \
    /reference:/usr/lib/mono/4.5/Facades/netstandard.dll \
    $(filter-out Makefile, $^)
 
 %Generated.cs: .%Generator.exe Makefile
-	MONO_PATH=/usr/lib/mono/4.5/:/usr/lib/mono/4.5/Facades/ mono $(filter-out Makefile, $<)
+	@echo 'Running code generator…'
+	@MONO_PATH=/usr/lib/mono/4.5/:/usr/lib/mono/4.5/Facades/ \
+	mono $(filter-out Makefile, $<)
 
 .%Generator.exe: %Generator.cs $(META) Makefile
-	mcs -out:$@ \
+	@echo 'Compiling code generator…'
+	@mcs -out:$@ \
    /reference:/usr/lib/mono/4.5/System.Collections.Immutable.dll \
    /reference:/usr/lib/mono/4.5/Facades/netstandard.dll \
    $(filter-out Makefile, $^)

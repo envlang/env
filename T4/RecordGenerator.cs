@@ -33,6 +33,10 @@ public static class RecordGenerator {
       var Ty = @field.Value;
       w($"    this.{F} = {F};");
     }
+    w($"      this.hashCode = Equality.HashCode(\"{name}\",");
+    w(String.Join(",\n", record.Select(@field =>
+                $"          this.{@field.Key}")));
+    w($"      );");
     w($"    }}");
   }
 
@@ -42,17 +46,14 @@ public static class RecordGenerator {
     w($"    public static bool operator !=({name} a, {name} b)");
     w($"      => !(a == b);");
     w($"    public override bool Equals(object other)");
-    w($"      => Equality.Untyped<{name}>(this, other, x => x as {name},");
+    w($"      => Equality.Untyped<{name}>(this, other, x => x as {name}, x => x.hashCode,");
     w(String.Join(",\n", record.Select(@field =>
                 $"          x => x.{@field.Key}")));
     w($"        );");
     w($"    public bool Equals({name} other)");
     w($"      => Equality.Equatable<{name}>(this, other);");
-    w($"    public override int GetHashCode()");
-    w($"      => Equality.HashCode(\"{name}\",");
-    w(String.Join(",\n", record.Select(@field =>
-                $"          this.{@field.Key}")));
-    w($"        );");
+    w($"    private readonly int hashCode;");
+    w($"      public override int GetHashCode() => hashCode;");
   }
 
   private static void StringConversion(this Action<string> w, string qualifier, string name, Record record) {
@@ -69,7 +70,8 @@ public static class RecordGenerator {
       var noAtF = F.StartsWith("@") ? F.Substring(1) : F;
       var caseF = Char.ToUpper(noAtF[0]) + noAtF.Substring(1);
       var Ty = @field.Value;
-      w($"    public {name} With{caseF}({Ty} {F}) => new {name}("
+      w($"    public {name} With{caseF}({Ty} {F})");
+      w($"      => new {name}("
         + String.Join(", ", record.Select(@f => $"{f.Key}: {f.Key}"))
         + ");");
     }

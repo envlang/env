@@ -9,11 +9,12 @@ namespace Immutable {
     public static bool operator !=(Unit a, Unit b)
       => !(a == b);
     public override bool Equals(object other)
-      => Equality.Untyped<Unit>(this, other, x => x as Unit);
+      => Equality.Untyped<Unit>(this, other, x => x as Unit, x => x.hashCode);
     public bool Equals(Unit other)
       => Equality.Equatable<Unit>(this, other);
+    private int hashCode = HashCode.Combine("Unit");
     public override int GetHashCode()
-      => HashCode.Combine("Unit");
+      => hashCode;
     public override string ToString() => "Unit";
   }
 }

@@ -20,4 +20,6 @@ public static class Global {
 
   public static ImmutableHashSet<T> ImmutableHashSet<T>(params T[] xs)
     => xs.ToImmutableHashSet();
+
+  public static T To<T>(this T x) => x;
 }
