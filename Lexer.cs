@@ -1,5 +1,4 @@
 using System;
-using System.Text;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -127,7 +126,7 @@ public static partial class Lexer {
     }
   }
 
-  private static IEnumerable<Lexeme> Transition(ref S state, ref string lexeme, GraphemeCluster c, Rule rule) {
+  private static ValueTuple<S, string, IImmutableEnumerator<Lexeme>> Transition(S state, string lexeme, GraphemeCluster c, Rule rule) {
     List<Lexeme> result = new List<Lexeme>();
     if (rule.throughState != state) {
       result.Add(new Lexeme(state, lexeme));
@@ -140,13 +139,19 @@ public static partial class Lexer {
       state = rule.newState;
       lexeme = "";
     }
-    return result;
+    return (state, lexeme, result.GetImmutableEnumerator());
   }
 
-  public static ParserErrorException ParserError(StringBuilder context, IEnumerator<GraphemeCluster> stream, S state, List<Rule> possibleNext, GraphemeCluster gc) {
-    var rest =
-      stream
-        .SingleUseEnumerable()
+  public static ParserErrorException ParserError(IImmutableEnumerator<GraphemeCluster> context, IImmutableEnumerator<GraphemeCluster> rest, S state, List<Rule> possibleNext, GraphemeCluster gc) {
+    var strContext =
+      context
+        .ToIEnumerable()
+        .TakeUntil(c => c.Equals(rest))
+        .Select(c => c.str)
+        .JoinWith("");
+
+    var strRest =
+      rest
         .TakeUntil(c => c.str.StartsWith("\n"))
         .Select(c => c.str)
         .JoinWith("");
@@ -158,39 +163,72 @@ public static partial class Lexer {
                  .Match(Some: x => x.UnicodeCategory(0).ToString(),
                         None: "None (empty string)");
     return new ParserErrorException(
-      $"Unexpected {actual} (Unicode category {cat}) while the lexer was in state {state}: expected one of {expected}{Environment.NewLine}{context}  <--HERE  {rest}"
+      $"Unexpected {actual} (Unicode category {cat}) while the lexer was in state {state}: expected one of {expected}{Environment.NewLine}{strContext}  <--HERE  {strRest}"
     );
   }
 
   // fake Unicode category
   private const UnicodeCategory EndOfFile = (UnicodeCategory)(-1);
 
-  public static IEnumerable<IEnumerable<Lexeme>> Lex1(string source) {
-    var context = new StringBuilder();
-    var lexeme = "";
-    var state = S.Space;
-    var e = source.TextElements().GetEnumerator();
-    while (e.MoveNext()) {
-      var c = e.Current;
-      context.Append(c.str);
+  public static U Foo<T, U>(T x, Func<T, U> f) => f(x);
+
+  [F]
+  private partial class Flub {
+    public ValueTuple<ValueTuple<string, S, IImmutableEnumerator<GraphemeCluster>>, IImmutableEnumerator<Lexeme>> F(
+      ValueTuple<string, S, IImmutableEnumerator<GraphemeCluster>> t,
+      ValueTuple<GraphemeCluster, IImmutableEnumerator<GraphemeCluster>> cur
+    )
+    {
+      var (lexeme, state, context) = t;
+      var (c, current) = cur;
       var possibleNext = Rules.WithEpsilonTransitions[state];
-      yield return
+
+      return
         possibleNext
           .First(r => r.test(c))
-          .IfSome(rule => Transition(ref state, ref lexeme, c, rule))
-          .ElseThrow(() => ParserError(context, e, state, possibleNext, c));
+          .IfSome(rule => {
+            var r = Transition(state, lexeme, c, rule);
+            var newState = r.Item1;
+            var newLexeme = r.Item2;
+            var tokens = r.Item3;
+            return ((newLexeme, newState, context), tokens);
+          })
+          .ElseThrow(() => ParserError(context, current, state, possibleNext, c));
     }
   }
 
-  public static IEnumerable<Lexeme> Lex(string source) {
-    var first = true;
-    foreach (var x in Lex1(source).SelectMany(x => x)) {
-      if (first && "".Equals(x.lexeme)) {
-        // skip the initial empty whitespace
-      } else {
-        first = false;
-        yield return x;
-      }
-    }
+  public static IImmutableEnumerator<IImmutableEnumerator<Lexeme>> Lex2(IImmutableEnumerator<GraphemeCluster> ie) {
+    var lexeme = "";
+    var state = S.Space;
+    // In a REPL we could reset the context at the end of each statement.
+    // We could also reset the context to the containing line or function when processing files.
+    var context = ie;
+
+    return ie.SelectAggregate((lexeme, state, context), Flub.Eq);
   }
+
+  public static IImmutableEnumerator<IImmutableEnumerator<Lexeme>>
+    Lex1(string source)
+    => Lex2(source.TextElements().GetImmutableEnumerator());
+
+  [F]
+  private partial class SkipInitialEmptyWhitespace {
+    public IImmutableEnumerator<Lexeme> F(
+      IImmutableEnumerator<Lexeme> lx
+    )
+    => lx.FirstAndRest().Match<Tuple<Lexeme, IImmutableEnumerator<Lexeme>>, IImmutableEnumerator<Lexeme>>(
+      Some: hdtl =>
+        // skip the initial empty whitespace
+ string.Equals(
+ "",
+ hdtl.Item1.lexeme)
+            ? hdtl.Item2
+            : hdtl.Item1.ImSingleton().Concat(hdtl.Item2),
+      None: Empty<Lexeme>());
+  }
+
+  public static IImmutableEnumerator<Lexeme> Lex(string source)
+    => Lex1(source)
+         .Flatten()
+         .Lazy(SkipInitialEmptyWhitespace.Eq);
 }

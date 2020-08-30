@@ -64,6 +64,9 @@ namespace Immutable {
     public static Option<U> IfSome<T, U>(this Option<T> o, Func<T, U> some)
       => o.Map(some);
 
+    public static Option<U> IfSome<T1, T2, U>(this Option<Tuple<T1, T2>> o, Func<T1, T2, U> some)
+      => o.Map(o1o2 => some(o1o2.Item1, o1o2.Item2));
+
     public static Option<U> Bind<T, U>(this Option<T> o, Func<T, Option<U>> f)
       => o.Match_(Some: some => f(some),
                   None: () => Option.None<U>());
@@ -83,5 +86,9 @@ namespace Immutable {
     public static T ElseThrow<T>(this Option<T> o, Func<Exception> none)
       => o.Match_(Some: value => value,
                   None: () => throw none());
+
+    public static T ElseThrow<T>(this Option<T> o, Exception none)
+      => o.Match_(Some: value => value,
+                  None: () => throw none);
   }
 }

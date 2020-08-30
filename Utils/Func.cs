@@ -71,3 +71,49 @@ public static class Func {
   public static C YMemoized<A, B, C>(this Func<Func<A, B, C>, A, B, C> f, A a, B b) where A : IEquatable<A> where B : IEquatable<B>
     => f.YMemoize()(a, b);
 }
+
+// IEquatableFunction
+// Possible with <in T, out U> if we remove the IEquatable constraint
+public interface IEqF<T, U> {// : IEquatable<IEqF<T, U>> {
+  U F(T x);
+}
+
+public interface IEqF<T1, T2, U> {// : IEquatable<IEqF<T, U>> {
+  U F(T1 x, T2 y);
+}
+
+[AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+public class F : System.Attribute {}
+
+public class PartialEqF<T1, T2, U> : IEqF<T2, U>, IEquatable<PartialEqF<T1, T2, U>> {
+  private readonly IEqF<T1, T2, U> f;
+  private readonly T1 arg1;
+  public PartialEqF(IEqF<T1, T2, U> f, T1 arg1) {
+    this.f = f;
+    this.arg1 = arg1;
+    hashCode = Equality.HashCode("PartialEqF<T1, T2, U>", f, arg1);
+  }
+  public U F(T2 arg2) => f.F(arg1, arg2);
+  public static bool operator ==(PartialEqF<T1, T2, U> a, PartialEqF<T1, T2, U> b)
+    => Equality.Operator(a, b);
+  public static bool operator !=(PartialEqF<T1, T2, U> a, PartialEqF<T1, T2, U> b)
+    => !(a == b);
+  public override bool Equals(object other)
+    => Equality.Untyped<PartialEqF<T1, T2, U>>(
+      this,
+      other,
+      x => x as PartialEqF<T1, T2, U>,
+      x => x.hashCode,
+      x => x.f,
+      x => x.arg1);
+  public bool Equals(PartialEqF<T1, T2, U> other)
+    => Equality.Equatable<PartialEqF<T1, T2, U>>(this, other);
+  private int hashCode;
+  public override int GetHashCode() => hashCode;
+  public override string ToString() => "Equatable function PartialEqF<T1, T2, U>()";
+}
+
+public static class EqFExtensionMethods {
+  public static IEqF<T2, U> ImPartial<T1, T2, U>(this IEqF<T1, T2, U> f, T1 arg1)
+  => new PartialEqF<T1, T2, U>(f, arg1);
+}

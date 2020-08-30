@@ -19,49 +19,23 @@ public static partial class Parser {
     throw new NotImplementedException();
   }
 
-  public static Option<A> BindFold<T, A>(this IEnumerable<T> e, A init, Func<A, T, Option<A>> f) {
-    var acc = init;
-    foreach (var x in e) {
-      var @new = f(acc, x);
-      if (@new.IsNone) {
-        return Option.None<A>();
-      } else {
-        acc = @new.ElseThrow(() => new Exception("impossible"));
-      }
-    }
-    return acc.Some();
-  }
-
-  public static A WhileSome<A>(A init, Func<A, Option<A>> f) {
-    var lastGood = init;
-    while (true) {
-      var @new = f(lastGood);
-      if (@new.IsNone) {
-        return lastGood;
-      } else {
-        lastGood = @new.ElseThrow(() => new Exception("impossible"));
-      }
-    }
-  }
-
-  public static Option<ImmutableEnumerator<Lexeme>> Parse3(
+  public static Option<IImmutableEnumerator<Lexeme>> Parse3(
     Func<Grammar2,
-         ImmutableEnumerator<Lexeme>,
-         Option<ImmutableEnumerator<Lexeme>>>
+         IImmutableEnumerator<Lexeme>,
+         Option<IImmutableEnumerator<Lexeme>>>
       Parse3,
     Grammar2 grammar,
-    ImmutableEnumerator<Lexeme> tokens
+    IImmutableEnumerator<Lexeme> tokens
     ) =>
     tokens
-      .MoveNext()
-      .Match<Tuple<Lexeme, ImmutableEnumerator<Lexeme>>, Option<ImmutableEnumerator<Lexeme>>>(
+      .FirstAndRest()
+      .Match(
         None: () =>
           throw new Exception("EOF, what to do?"),
         Some: headRest => {
-          throw new Exception("NIY");
           var first = headRest.Item1;
           var rest = headRest.Item2;
-          grammar.Match<Option<ImmutableEnumerator<Lexeme>>>(
+          return grammar.Match(
             RepeatOnePlus: g =>
               Parse3(g, rest)
                 .IfSome(rest1 =>
@@ -78,7 +52,7 @@ public static partial class Parser {
             Terminal: t =>
               first.state.Equals(t)
               ? rest.Some()
-              : None<ImmutableEnumerator<Lexeme>>()
+              : None<IImmutableEnumerator<Lexeme>>()
           );
           // TODO: at the top-level, check that the lexemes
           // are empty if the parser won't accept anything else.

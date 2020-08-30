@@ -235,4 +235,32 @@ public static class Collection {
       }
     }
   }
+
+  public static Option<A> BindFold<T, A>(this IEnumerable<T> e, A init, Func<A, T, Option<A>> f) {
+    var acc = init;
+    foreach (var x in e) {
+      var @new = f(acc, x);
+      if (@new.IsNone) {
+        return Option.None<A>();
+      } else {
+        acc = @new.ElseThrow(() => new Exception("impossible"));
+      }
+    }
+    return acc.Some();
+  }
+
+  public static A WhileSome<A>(this A init, Func<A, Option<A>> f) {
+    var lastGood = init;
+    while (true) {
+      var @new = f(lastGood);
+      if (@new.IsNone) {
+        return lastGood;
+      } else {
+        lastGood = @new.ElseThrow(() => new Exception("impossible"));
+      }
+    }
+  }
+
+  public static Option<Tuple<A, B>> WhileSome<A, B>(this Option<Tuple<A, B>> init, Func<A, B, Option<Tuple<A, B>>> f)
+    => init.IfSome(ab1 => WhileSome(ab1, ab => f(ab.Item1, ab.Item2)));
 }
