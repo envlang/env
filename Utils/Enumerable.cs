@@ -239,17 +239,25 @@ public static class Collection {
   public static Option<A> BindFold<T, A>(this IEnumerable<T> e, A init, Func<A, T, Option<A>> f) {
     var acc = init;
     foreach (var x in e) {
-      var @new = f(acc, x);
-      if (@new.IsNone) {
-        return Option.None<A>();
+      var newAcc = f(acc, x);
+      if (newAcc.IsNone) {
+        break;
       } else {
-        acc = @new.ElseThrow(() => new Exception("impossible"));
+        acc = newAcc.ElseThrow(new Exception("impossible"));
       }
     }
     return acc.Some();
   }
 
-  public static A WhileSome<A>(this A init, Func<A, Option<A>> f) {
+  public static Option<ValueTuple<A, IEnumerable<U>>> BindFoldMap<T, A, U>(this IEnumerable<T> e, A init, Func<A, T, Option<ValueTuple<A, U>>> f)
+    => e.BindFold(
+      (init, ImmutableStack<U>.Empty),
+      (accL, x) =>
+        f(accL.Item1, x).IfSome((newAcc, result) =>
+          (newAcc, accL.Item2.Push(result)))
+    ).IfSome((acc, l) => (acc, l.Reverse<U>()));
+
+  public static A FoldWhileSome<A>(this A init, Func<A, Option<A>> f) {
     var lastGood = init;
     while (true) {
       var @new = f(lastGood);
@@ -261,6 +269,17 @@ public static class Collection {
     }
   }
 
-  public static Option<Tuple<A, B>> WhileSome<A, B>(this Option<Tuple<A, B>> init, Func<A, B, Option<Tuple<A, B>>> f)
-    => init.IfSome(ab1 => WhileSome(ab1, ab => f(ab.Item1, ab.Item2)));
+  public static Option<Tuple<A, B>> FoldWhileSome<A, B>(this Option<Tuple<A, B>> init, Func<A, B, Option<Tuple<A, B>>> f)
+    => init.IfSome(ab1 => ab1.FoldWhileSome(ab => f(ab.Item1, ab.Item2)));
+
+  public static Option<ValueTuple<A, B>> FoldWhileSome<A, B>(this Option<ValueTuple<A, B>> init, Func<A, B, Option<ValueTuple<A, B>>> f)
+    => init.IfSome(ab1 => ab1.FoldWhileSome(ab => f(ab.Item1, ab.Item2)));
+
+  public static ValueTuple<A, IEnumerable<U>> FoldMapWhileSome<A, U>(this A init, Func<A, Option<ValueTuple<A, U>>> f)
+    => FoldWhileSome(
+      (init, ImmutableStack<U>.Empty),
+      accL =>
+        f(accL.Item1).IfSome((newAcc, result) =>
+          (newAcc, accL.Item2.Push(result)))
+    ).Pipe((acc, l) => (acc, l.Reverse<U>()));
 }

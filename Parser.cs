@@ -4,60 +4,73 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Immutable;
+using Ast;
 using S = Lexer.S;
 using Lexeme = Lexer.Lexeme;
 using Grammar2 = MixFix.Grammar2;
 using static Global;
 
 public static partial class Parser {
-  public static bool Parse2(string source) {
-    Grammar2 grammar =
-      DefaultGrammar.DefaultPrecedenceDAG.ToGrammar2();
-    Log(grammar.Str());
-
-    // Parse3(grammar, Lexer.Lex(source))
-    throw new NotImplementedException();
-  }
-
-  public static Option<IImmutableEnumerator<Lexeme>> Parse3(
-    Func<Grammar2,
-         IImmutableEnumerator<Lexeme>,
-         Option<IImmutableEnumerator<Lexeme>>>
+  public static Option<ValueTuple<IImmutableEnumerator<Lexeme>, AstNode>> Parse3(
+    Func<IImmutableEnumerator<Lexeme>,
+         Grammar2,
+         //Option<IImmutableEnumerator<Lexeme>>
+         Option<ValueTuple<IImmutableEnumerator<Lexeme>, AstNode>>
+         >
       Parse3,
-    Grammar2 grammar,
-    IImmutableEnumerator<Lexeme> tokens
+    IImmutableEnumerator<Lexeme> tokens,
+    Grammar2 grammar
     ) =>
     tokens
       .FirstAndRest()
       .Match(
         None: () =>
           throw new Exception("EOF, what to do?"),
-        Some: headRest => {
-          var first = headRest.Item1;
-          var rest = headRest.Item2;
+        Some: firstRest => {
+          // Case("IImmutableEnumerable<AstNode>", "Operator"))
+          var first = firstRest.Item1;
+          var rest = firstRest.Item2;
           return grammar.Match(
             RepeatOnePlus: g =>
-              Parse3(g, rest)
-                .IfSome(rest1 =>
-                  WhileSome(rest1, restI => Parse3(g, restI))),
+              rest.FoldMapWhileSome(restI => Parse3(restI, g))
+                .If<IImmutableEnumerator<Lexeme>, IEnumerable<AstNode>>((restN, nodes) => nodes.Count() > 1)
+                .IfSome((restN, nodes) => (restN, AstNode.Operator(nodes))),
+                //.IfSome(rest1 =>
+                  // TODO: remove IfSome above (useless) && aggregate
+                //  WhileSome(rest1, restI => Parse3(restI, g))),
             // TODO: to check for ambiguous parses, we can use
             // .SingleArg(…) instead of .FirstArg(…).
             Or: l =>
-              l.First(g => Parse3(g, rest)),
-            // TODO: use a shortcut version of .Aggregate
-            // to exit early when None is returned by a step
+              l.First(g => Parse3(rest, g)),
             Sequence: l =>
-              l.BindFold(rest,
-                        (restI, g) => Parse3(g, restI)),
+              l.BindFoldMap(rest, (restI, g) => Parse3(restI, g))
+               .IfSome((restN, nodes) => (restN, AstNode.Operator(nodes))),
             Terminal: t =>
               first.state.Equals(t)
-              ? rest.Some()
-              : None<IImmutableEnumerator<Lexeme>>()
+              ? (rest,
+                 AstNode.Terminal(/* TODO: */ Expr.String(rest.ToString())))
+                .Some()
+              : None<ValueTuple<IImmutableEnumerator<Lexeme>, AstNode>>()
           );
           // TODO: at the top-level, check that the lexemes
           // are empty if the parser won't accept anything else.
         }
       );
+
+  public static Option<ValueTuple<IImmutableEnumerator<Lexeme>, AstNode>> Parse2(string source) {
+    Grammar2 grammar =
+      DefaultGrammar.DefaultPrecedenceDAG.ToGrammar2();
+    Log(grammar.Str());
+
+    var P = Func.YMemoize<
+              IImmutableEnumerator<Lexeme>,
+              Grammar2,
+              Option<ValueTuple<IImmutableEnumerator<Lexeme>, AstNode>>>(
+      Parse3
+    );
+
+    return P(Lexer.Lex(source), grammar);
+  }
 
   public static Ast.Expr Parse(string source) {
     return Lexer.Lex(source)

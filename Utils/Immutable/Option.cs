@@ -64,7 +64,16 @@ namespace Immutable {
     public static Option<U> IfSome<T, U>(this Option<T> o, Func<T, U> some)
       => o.Map(some);
 
+    public static Option<T> If<T>(this T value, Func<T, bool> predicate)
+      => predicate(value) ? value.Some() : Option.None<T>();
+
+    public static Option<ValueTuple<T1, T2>> If<T1, T2>(this ValueTuple<T1, T2> value, Func<T1, T2, bool> predicate)
+      => predicate(value.Item1, value.Item2) ? value.Some() : Option.None<ValueTuple<T1, T2>>();
+
     public static Option<U> IfSome<T1, T2, U>(this Option<Tuple<T1, T2>> o, Func<T1, T2, U> some)
+      => o.Map(o1o2 => some(o1o2.Item1, o1o2.Item2));
+
+    public static Option<U> IfSome<T1, T2, U>(this Option<ValueTuple<T1, T2>> o, Func<T1, T2, U> some)
       => o.Map(o1o2 => some(o1o2.Item1, o1o2.Item2));
 
     public static Option<U> Bind<T, U>(this Option<T> o, Func<T, Option<U>> f)

@@ -23,11 +23,11 @@ public static class Global {
 
   public static T To<T>(this T x) => x;
 
-  public static A WhileSome<A>(A init, Func<A, Option<A>> f)
-    => Collection.WhileSome(init, f);
+  public static A FoldWhileSome<A>(A init, Func<A, Option<A>> f)
+    => Collection.FoldWhileSome(init, f);
 
-  public static Option<Tuple<A, B>> WhileSome<A, B>(Option<Tuple<A, B>> init, Func<A, B, Option<Tuple<A, B>>> f)
-    => Collection.WhileSome(init, f);
+  public static Option<Tuple<A, B>> FoldWhileSome<A, B>(Option<Tuple<A, B>> init, Func<A, B, Option<Tuple<A, B>>> f)
+    => Collection.FoldWhileSome(init, f);
 
   public static IImmutableEnumerator<T> Empty<T>()
     => ImmutableEnumeratorExtensionMethods.Empty<T>();
