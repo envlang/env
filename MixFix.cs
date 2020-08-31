@@ -68,10 +68,12 @@ public static partial class MixFix {
 
     public bool IsEmpty {
       get => this.Match(
-        Or: l => l.All(g => g.IsEmpty),
+        Or: l => l.Count() > 0 && l.All(g => g.IsEmpty),
         Sequence: l => l.All(g => g.IsEmpty),
         RepeatOnePlus: g => g.IsEmpty,
         Terminal: t => false,
+        Annotated: a => a.Item2.IsEmpty,
+        // TODO: when converting to Grammar2, make sure to recompute the .IsEmpty and .IsImpossible and .AllowsEmpty
         Rule: r => false
       );
     }
@@ -79,12 +81,13 @@ public static partial class MixFix {
     // TODO: cache this!
     public bool AllowsEmpty {
       get => this.Match(
-        Or: l => l.Any(g => g.AllowsEmpty),
+        Or: l => l.Count() > 0 && l.Any(g => g.AllowsEmpty),
         Sequence: l => l.All(g => g.IsEmpty),
         // This one should not be true, if it is
         // then the precedence graph may be ill-formed?
         RepeatOnePlus: g => g.AllowsEmpty,
         Terminal: t => false,
+        Annotated: a => a.Item2.AllowsEmpty,
         Rule: r => false
       );
     }
@@ -95,6 +98,7 @@ public static partial class MixFix {
         Sequence: l => l.Any(g => g.IsImpossible),
         RepeatOnePlus: g => g.IsImpossible,
         Terminal: t => false,
+        Annotated: a => a.Item2.IsImpossible,
         Rule: r => false
       );
     }
@@ -128,16 +132,19 @@ public static partial class MixFix {
     private string Paren(bool paren, string s)
       => paren ? $"({s})" : s;
 
-    string CustomToString() =>
-        this.IsEmpty ? "Empty"
-      : this.IsImpossible ? "Impossible"
-      : this.Match<string>(
+    string CustomToString()
+      => this.Match<string>(
         Or: l =>
-          Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(" | ")),
+          l.Count() == 0
+          ? "ImpossibleOr"
+          : Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(" | ")),
         Sequence: l =>
-          Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(", ")),
+          l.Count() == 0
+          ? "EmptySequence"
+          : Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(", ")),
         RepeatOnePlus: g => $"{g.Str()}+",
         Terminal: t => t.Str(),
+        Annotated: a => $"{a.Item1}: {a.Item2}",
         Rule: r => r
       );
   }
@@ -164,14 +171,16 @@ public static partial class MixFix {
     private string Paren(bool paren, string s)
       => paren ? $"({s})" : s;
 
-    string CustomToString() =>
-        this.IsEmpty ? "Empty"
-      : this.IsImpossible ? "Impossible"
-      : this.Match<string>(
+    string CustomToString()
+      => this.Match<string>(
         Or: l =>
-          Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(" | ")),
+          l.Count() == 0
+          ? "ImpossibleOr"
+          : Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(" | ")),
         Sequence: l =>
-          Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(", ")),
+          l.Count() == 0
+          ? "EmptySequence"
+          : Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(", ")),
         RepeatOnePlus: g => $"{g.Str()}+",
         Terminal: t => t.Str()
       );
@@ -423,8 +432,6 @@ public static partial class MixFix {
     var infixr = node.infixRightAssociative.ToGrammar1();
 
 
-    //Log("closed.IsImpossible:"+closed.IsImpossible);
-
 
 
 
@@ -434,15 +441,15 @@ public static partial class MixFix {
     // they are empty.
 
 
-
+    Func<string, Grammar1, Grammar1> Annotated = (s, g) => Grammar1.Annotated((s, g));
 
     return
-        (closed ? closed : Grammar1.Impossible)
-      | (nonAssoc ? (lsucc, nonAssoc, rsucc) : Grammar1.Impossible)
+        Annotated("closed", closed ? closed : Grammar1.Impossible)
+      | Annotated("nonAssoc", (nonAssoc ? (lsucc, nonAssoc, rsucc) : Grammar1.Impossible))
       // TODO: post-processsing of the rightassoc list.
-      | ((prefix || infixr) ? ((prefix || (lsucc, infixr))["+"], rsucc) : Grammar1.Impossible)
+      | Annotated("prefix||infixr", ((prefix || infixr) ? ((prefix || (lsucc, infixr))["+"], rsucc) : Grammar1.Impossible))
       // TODO: post-processsing of the leftassoc list.
-      | ((postfix || infixl) ? (lsucc, (postfix || (infixl, rsucc))["+"]) : Grammar1.Impossible);
+      | Annotated("postfix||infixl", ((postfix || infixl) ? (lsucc, (postfix || (infixl, rsucc))["+"]) : Grammar1.Impossible));
   }
 
   public static EquatableDictionary<string, Grammar1> ToGrammar1(this PrecedenceDAG precedenceDAG)
@@ -462,6 +469,7 @@ public static partial class MixFix {
         }
         return recur(labeled[r], labeled);
       },
+      Annotated:     a => recur(a.Item2, labeled),
       Terminal:      t => Grammar2.Terminal(t),
       Sequence:      l => Grammar2.Sequence(l.Select(g => recur(g, labeled))),
       Or:            l => Grammar2.Or(l.Select(g => recur(g, labeled))),

@@ -20,6 +20,7 @@ public static class ParserGenerator {
           Case("IEnumerable<Grammar1>", "Or"),
           Case("IEnumerable<Grammar1>", "Sequence"),
           Case("S",                     "Terminal"),
+          Case("ValueTuple<string, Grammar1>", "Annotated"),
           Case("string",                "Rule")),
 
         Variant("Grammar2",

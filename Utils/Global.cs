@@ -11,6 +11,11 @@ public static class Global {
   
   public static void Log (string str) => Console.WriteLine(str);
 
+  public static T Log<T>(string str, Func<T> f) {
+    Console.WriteLine(str);
+    return f();
+  }
+
   public static Unit unit { get => Unit.unit; }
 
   public static Option<T> None<T>() => Option.None<T>();
