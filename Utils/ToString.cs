@@ -32,6 +32,9 @@ public static class ToStringImplementations {
   public static string Str<T>(this IEnumerable<Ast.AstNode> e)
     => $"IEnumerab({e.Select(x => x.Str<Ast.AstNode>()).JoinWith(", ")})";
 
+  public static string Str<T>(this IEnumerable<Ast.ParserResult> e)
+    => $"IEnumerab({e.Select(x => x.Str<Ast.ParserResult>()).JoinWith(", ")})";
+
   public static string Str<Grammar>(this ImmutableDictionary<string,Grammar> h)
     => $"ImmutableDictionary(\n{h.Select(x => $"  {x.Key.Str<string>()}:{x.Value.Str<Grammar>()}").JoinWith(",\n")}\n)";
 

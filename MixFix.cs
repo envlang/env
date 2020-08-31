@@ -155,7 +155,8 @@ public static partial class MixFix {
         Or: l => l.All(g => g.IsEmpty),
         Sequence: l => l.All(g => g.IsEmpty),
         RepeatOnePlus: g => g.IsEmpty,
-        Terminal: t => false
+        Terminal: t => false,
+        Annotated: a => a.Item2.IsEmpty
       );
     }
 
@@ -164,7 +165,8 @@ public static partial class MixFix {
         Or: l => l.All(g => g.IsImpossible),
         Sequence: l => l.Any(g => g.IsImpossible),
         RepeatOnePlus: g => g.IsImpossible,
-        Terminal: t => false
+        Terminal: t => false,
+        Annotated: a => a.Item2.IsImpossible
       );
     }
 
@@ -182,7 +184,8 @@ public static partial class MixFix {
           ? "EmptySequence"
           : Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(", ")),
         RepeatOnePlus: g => $"{g.Str()}+",
-        Terminal: t => t.Str()
+        Terminal: t => t.Str(),
+        Annotated: a => $"Annotated({a.Item1.Str()}, {a.Item2.Str()})"
       );
   }
 
@@ -414,16 +417,27 @@ public static partial class MixFix {
       Hole: precedenceGroups => precedenceGroups.ToGrammar1());
 
   public static Grammar1 ToGrammar1(this Operator @operator)
-    => Grammar1.Sequence(
-      @operator.internalParts.Select(part => part.ToGrammar1()));
+    => Grammar1.Annotated(
+         (Annotation.Operator(@operator),
+          Grammar1.Sequence(
+            @operator.internalParts.Select(
+              part => part.ToGrammar1()))));
 
   public static Grammar1 ToGrammar1(this IEnumerable<Operator> operators)
     => Grammar1.Or(
       operators.Select(@operator => @operator.ToGrammar1()));
 
   public static Grammar1 ToGrammar1(this DAGNode node) {
-    var lsucc = node.leftmostHole_.ToGrammar1();
-    var rsucc = node.rightmostHole_.ToGrammar1();
+    Func<Associativity, Grammar1, Grammar1> SamePrecedence = (a, g)
+      => Grammar1.Annotated((Annotation.SamePrecedence(a), g));
+    Func<Grammar1, Grammar1> R = g => SamePrecedence(Associativity.RightAssociative, g);
+    Func<Grammar1, Grammar1> L = g => SamePrecedence(Associativity.LeftAssociative, g);
+    Func<Grammar1, Grammar1> N = g => SamePrecedence(Associativity.NonAssociative, g);
+    Func<Grammar1, Grammar1> H = g => Grammar1.Annotated((Annotation.Hole, g));
+    var Impossible = Grammar1.Impossible;
+
+    var lsucc = H(node.leftmostHole_.ToGrammar1());
+    var rsucc = H(node.rightmostHole_.ToGrammar1());
     var closed = node.closed.ToGrammar1();
     var nonAssoc = node.infixNonAssociative.ToGrammar1();
     var prefix = node.prefix.ToGrammar1();
@@ -431,25 +445,13 @@ public static partial class MixFix {
     var infixl = node.infixLeftAssociative.ToGrammar1();
     var infixr = node.infixRightAssociative.ToGrammar1();
 
-
-
-
-
-
-    // TODO: BUG: only include these parts if there are
-    // any operators with that fixity, with the code below
-    // they are empty.
-
-
-    Func<string, Grammar1, Grammar1> Annotated = (s, g) => Grammar1.Annotated((s, g));
-
     return
-        Annotated("closed", closed ? closed : Grammar1.Impossible)
-      | Annotated("nonAssoc", (nonAssoc ? (lsucc, nonAssoc, rsucc) : Grammar1.Impossible))
-      // TODO: post-processsing of the rightassoc list.
-      | Annotated("prefix||infixr", ((prefix || infixr) ? ((prefix || (lsucc, infixr))["+"], rsucc) : Grammar1.Impossible))
-      // TODO: post-processsing of the leftassoc list.
-      | Annotated("postfix||infixl", ((postfix || infixl) ? (lsucc, (postfix || (infixl, rsucc))["+"]) : Grammar1.Impossible));
+        // TODO: we can normally remove the ?: checks, as the constructors for grammars
+        // now coalesce Impossible cases in the correct way.
+        (closed ? N(closed) : Impossible)
+      | (nonAssoc ? N( (lsucc, nonAssoc, rsucc) ) : Impossible)
+      | ((prefix || infixr) ? R( ((prefix | (lsucc, infixr))["+"], rsucc) ) : Impossible)
+      | ((postfix || infixl) ? L( (lsucc, (postfix || (infixl, rsucc))["+"]) ) : Impossible);
   }
 
   public static EquatableDictionary<string, Grammar1> ToGrammar1(this PrecedenceDAG precedenceDAG)
@@ -469,7 +471,7 @@ public static partial class MixFix {
         }
         return recur(labeled[r], labeled);
       },
-      Annotated:     a => recur(a.Item2, labeled),
+      Annotated:     a => Grammar2.Annotated((a.Item1, recur(a.Item2, labeled))),
       Terminal:      t => Grammar2.Terminal(t),
       Sequence:      l => Grammar2.Sequence(l.Select(g => recur(g, labeled))),
       Or:            l => Grammar2.Or(l.Select(g => recur(g, labeled))),

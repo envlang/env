@@ -20,14 +20,20 @@ public static class ParserGenerator {
           Case("IEnumerable<Grammar1>", "Or"),
           Case("IEnumerable<Grammar1>", "Sequence"),
           Case("S",                     "Terminal"),
-          Case("ValueTuple<string, Grammar1>", "Annotated"),
+          Case("ValueTuple<Annotation, Grammar1>", "Annotated"),
           Case("string",                "Rule")),
+
+        Variant("Annotation",
+          Case("MixFix.Operator", "Operator"),
+          Case("Associativity", "SamePrecedence"),
+          Case("Hole")),
 
         Variant("Grammar2",
           Case("Grammar2",              "RepeatOnePlus"),
           Case("IEnumerable<Grammar2>", "Or"),
           Case("IEnumerable<Grammar2>", "Sequence"),
-          Case("S",                     "Terminal")),
+          Case("S",                     "Terminal"),
+          Case("ValueTuple<Annotation, Grammar2>", "Annotated")),
 
         Variant("Fixity",
           Case("Closed"),

@@ -11,61 +11,44 @@ using Grammar2 = MixFix.Grammar2;
 using static Global;
 
 public static partial class Parser {
-  public static Option<ValueTuple<IImmutableEnumerator<Lexeme>, AstNode>> Parse3(
+  public static Option<ValueTuple<IImmutableEnumerator<Lexeme>, ParserResult>> Parse3(
     Func<IImmutableEnumerator<Lexeme>,
          Grammar2,
          //Option<IImmutableEnumerator<Lexeme>>
-         Option<ValueTuple<IImmutableEnumerator<Lexeme>, AstNode>>
+         Option<ValueTuple<IImmutableEnumerator<Lexeme>, ParserResult>>
          >
       Parse3,
     IImmutableEnumerator<Lexeme> tokens,
     Grammar2 grammar
-    ) =>
-    tokens
-      .FirstAndRest()
-      .Match(
-        None: () =>
-          //throw new Exception("EOF, what to do?"),
-          None<ValueTuple<IImmutableEnumerator<Lexeme>, AstNode>>(),
-        Some: firstRest => {
-          var first = firstRest.Item1;
-          var rest = firstRest.Item2;
-          Log(first.lexeme);
-          Log(grammar.ToString());
-          Log(grammar.Match(
-            RepeatOnePlus: _ => "RepeatOnePlus",
-            Or: _ => "Or",
-            Sequence: _ => "Sequence",
-            Terminal: t => "Terminal:"+t.ToString()));
-          return grammar.Match(
-            RepeatOnePlus: g =>
-              rest.FoldMapWhileSome(restI => Parse3(restI, g))
-                .If<IImmutableEnumerator<Lexeme>, IEnumerable<AstNode>>((restN, nodes) => nodes.Count() > 1)
-                .IfSome((restN, nodes) => (restN, AstNode.Operator(nodes))),
-            // TODO: to check for ambiguous parses, we can use
-            // .Single(…) instead of .First(…).
-            Or: l =>
-              l.First(g => Parse3(rest, g)),
-            Sequence: l => {
-              return l.BindFoldMap(rest, (restI, g) => Parse3(restI, g))
-               .IfSome((restN, nodes) => {
-                 Log($"{nodes.Count()}/{l.Count()}");
-                 return (restN, AstNode.Operator(nodes));
-               });
-            },
-            Terminal: t =>
-              first.state.Equals(t)
-              ? (rest,
-                 AstNode.Terminal(/* TODO: */ Expr.String(rest.ToString())))
-                .Some()
-              : None<ValueTuple<IImmutableEnumerator<Lexeme>, AstNode>>()
-          );
-          // TODO: at the top-level, check that the lexemes
-          // are empty if the parser won't accept anything else.
-        }
-      );
+    )
+    => grammar.Match(
+        RepeatOnePlus: g =>
+          tokens.FoldMapWhileSome(restI => Parse3(restI, g))
+            .If((restN, nodes) => nodes.Count() > 1)
+            .IfSome((restN, nodes) => (restN, ParserResult.Productions(nodes))),
+        // TODO: to check for ambiguous parses, we can use
+        // .Single(…) instead of .First(…).
+        Or: l =>
+          l.First(g => Parse3(tokens, g)),
+        Sequence: l =>
+          l.BindFoldMap(tokens, (restI, g) => Parse3(restI, g))
+            .IfSome((restN, nodes) =>
+              Log($"{nodes.Count()}/{l.Count()}", () =>
+                (restN, ParserResult.Productions(nodes)))),
+        Terminal: t =>
+        // TODO: move the FirstAndRest here!
+          tokens
+            .FirstAndRest()
+            // When EOF is reached, the parser can't accept this derivation.
+            .If((first, rest) => first.state.Equals(t))
+            .IfSome((first, rest) => (rest, ParserResult.Terminal(first))),
+        Annotated: a =>
+          // TODO: use the annotation to give some shape to these lists
+          Parse3(tokens, a.Item2));
+      // TODO: at the top-level, check that the lexemes
+      // are empty if the parser won't accept anything else.
 
-  public static Option<ValueTuple<IImmutableEnumerator<Lexeme>, AstNode>> Parse2(string source) {
+  public static Option<ValueTuple<IImmutableEnumerator<Lexeme>, ParserResult>> Parse2(string source) {
     Grammar2 grammar =
       DefaultGrammar.DefaultPrecedenceDAG.ToGrammar2();
     //Log(grammar.Str());
@@ -73,7 +56,7 @@ public static partial class Parser {
     var P = Func.YMemoize<
               IImmutableEnumerator<Lexeme>,
               Grammar2,
-              Option<ValueTuple<IImmutableEnumerator<Lexeme>, AstNode>>>(
+              Option<ValueTuple<IImmutableEnumerator<Lexeme>, ParserResult>>>(
       Parse3
     );
 

@@ -28,6 +28,8 @@ public static class Global {
 
   public static T To<T>(this T x) => x;
 
+  public static Option<T> If<T>(this bool cond, T x) => x.If(_ => cond);
+
   public static A FoldWhileSome<A>(A init, Func<A, Option<A>> f)
     => Collection.FoldWhileSome(init, f);
 

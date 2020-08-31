@@ -232,11 +232,12 @@ public static partial class Lexer {
       IImmutableEnumerator<Lexeme> lx
     )
     => lx.FirstAndRest().Match<Tuple<Lexeme, IImmutableEnumerator<Lexeme>>, IImmutableEnumerator<Lexeme>>(
-      Some: hdtl =>
-        // skip the initial empty whitespace
-          hdtl.Item1.state.Equals(S.Space)
-        ? hdtl.Item2
-        : hdtl.Item1.ImSingleton().Concat(hdtl.Item2.Lazy(DiscardWhitespace.Eq)),
+      Some: hdtl => {
+        var rest = hdtl.Item2.Lazy(DiscardWhitespace.Eq);
+        return hdtl.Item1.state.Equals(S.Space)
+          ? rest
+          : hdtl.Item1.ImSingleton().Concat(rest);
+      },
       None: Empty<Lexeme>());
   }
 
