@@ -8,14 +8,20 @@ public static class Collection {
   public static void ForEach<T>(this IEnumerable<T> x, Action<T> f)
     => x.ToImmutableList().ForEach(f);
 
-  public static ImmutableList<T> Cons<T>(this ImmutableList<T> l, T x)
+  public static ImmutableList<T> Cons<T>(this T x, ImmutableList<T> l)
     => l.Add(x);
 
-  public static ImmutableList<Tuple<T,U>> Cons<T,U>(this ImmutableList<Tuple<T,U>> l, T x, U y)
-    => l.Cons(Tuple.Create(x,y));
+  public static IEnumerable<T> Cons<T>(this T x, IEnumerable<T> l)
+    => x.Singleton().Concat(l);
 
-  public static ImmutableList<Tuple<T,U,V>> Cons<T,U,V>(this ImmutableList<Tuple<T,U,V>> l, T x, U y, V z)
-    => l.Cons(Tuple.Create(x,y,z));
+  public static IEnumerable<T> Concat<T>(this IEnumerable<T> l, T x)
+    => l.Concat(x.Singleton());
+
+  public static ImmutableList<Tuple<T,U>> Add<T,U>(this ImmutableList<Tuple<T,U>> l, T x, U y)
+    => l.Add(Tuple.Create(x,y));
+
+  public static ImmutableList<Tuple<T,U,V>> Add<T,U,V>(this ImmutableList<Tuple<T,U,V>> l, T x, U y, V z)
+    => l.Add(Tuple.Create(x,y,z));
 
   public static void Deconstruct<A, B>(this Tuple<A, B> t, out A a, out B b) {
     a = t.Item1;
@@ -241,7 +247,7 @@ public static class Collection {
     foreach (var x in e) {
       var newAcc = f(acc, x);
       if (newAcc.IsNone) {
-        break;
+        return Option.None<A>();
       } else {
         acc = newAcc.ElseThrow(new Exception("impossible"));
       }

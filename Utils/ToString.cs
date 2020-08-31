@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 
 public interface IString {
@@ -24,6 +25,12 @@ public static class ToStringImplementations {
 
   public static string Str<T>(this ImmutableHashSet<string> h)
     => $"ImmutableHashSet({h.Select(x => x.Str<string>()).JoinWith(", ")})";
+
+  public static string Str<T>(this IEnumerable<MixFix.Grammar2> e)
+    => $"IEnumerabl({e.Select(x => x.Str<MixFix.Grammar2>()).JoinWith(", ")})";
+
+  public static string Str<T>(this IEnumerable<Ast.AstNode> e)
+    => $"IEnumerab({e.Select(x => x.Str<Ast.AstNode>()).JoinWith(", ")})";
 
   public static string Str<Grammar>(this ImmutableDictionary<string,Grammar> h)
     => $"ImmutableDictionary(\n{h.Select(x => $"  {x.Key.Str<string>()}:{x.Value.Str<Grammar>()}").JoinWith(",\n")}\n)";

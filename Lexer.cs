@@ -216,19 +216,33 @@ public static partial class Lexer {
     public IImmutableEnumerator<Lexeme> F(
       IImmutableEnumerator<Lexeme> lx
     )
+    => lx.FirstAndRest().Match(
+      Some: hdtl =>
+        // skip the initial empty whitespace
+          "".Equals(hdtl.Item1.lexeme)
+        ? hdtl.Item2
+        : hdtl.Item1.ImSingleton().Concat(hdtl.Item2),
+      None: Empty<Lexeme>());
+  }
+
+  // TODO: move this to a .Filter() extension method.
+  [F]
+  private partial class DiscardWhitespace {
+    public IImmutableEnumerator<Lexeme> F(
+      IImmutableEnumerator<Lexeme> lx
+    )
     => lx.FirstAndRest().Match<Tuple<Lexeme, IImmutableEnumerator<Lexeme>>, IImmutableEnumerator<Lexeme>>(
       Some: hdtl =>
         // skip the initial empty whitespace
- string.Equals(
- "",
- hdtl.Item1.lexeme)
-            ? hdtl.Item2
-            : hdtl.Item1.ImSingleton().Concat(hdtl.Item2),
+          hdtl.Item1.state.Equals(S.Space)
+        ? hdtl.Item2
+        : hdtl.Item1.ImSingleton().Concat(hdtl.Item2.Lazy(DiscardWhitespace.Eq)),
       None: Empty<Lexeme>());
   }
 
   public static IImmutableEnumerator<Lexeme> Lex(string source)
     => Lex1(source)
          .Flatten()
-         .Lazy(SkipInitialEmptyWhitespace.Eq);
+         //.Lazy(SkipInitialEmptyWhitespace.Eq)
+         .Lazy(DiscardWhitespace.Eq);
 }

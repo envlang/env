@@ -27,6 +27,9 @@ namespace Immutable {
         
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
           => this.GetEnumerator();
+
+        public override string ToString()
+          => $"Some({value.ToString()})";
       }
 
       public class None<T> : Option<T>, System.Collections.IEnumerable {
@@ -42,6 +45,9 @@ namespace Immutable {
         
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
           => this.GetEnumerator();
+
+        public override string ToString()
+          => $"None";
       }
     }
   }

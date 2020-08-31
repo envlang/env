@@ -25,26 +25,34 @@ public static partial class Parser {
       .FirstAndRest()
       .Match(
         None: () =>
-          throw new Exception("EOF, what to do?"),
+          //throw new Exception("EOF, what to do?"),
+          None<ValueTuple<IImmutableEnumerator<Lexeme>, AstNode>>(),
         Some: firstRest => {
-          // Case("IImmutableEnumerable<AstNode>", "Operator"))
           var first = firstRest.Item1;
           var rest = firstRest.Item2;
+          Log(first.lexeme);
+          Log(grammar.ToString());
+          Log(grammar.Match(
+            RepeatOnePlus: _ => "RepeatOnePlus",
+            Or: _ => "Or",
+            Sequence: _ => "Sequence",
+            Terminal: t => "Terminal:"+t.ToString()));
           return grammar.Match(
             RepeatOnePlus: g =>
               rest.FoldMapWhileSome(restI => Parse3(restI, g))
                 .If<IImmutableEnumerator<Lexeme>, IEnumerable<AstNode>>((restN, nodes) => nodes.Count() > 1)
                 .IfSome((restN, nodes) => (restN, AstNode.Operator(nodes))),
-                //.IfSome(rest1 =>
-                  // TODO: remove IfSome above (useless) && aggregate
-                //  WhileSome(rest1, restI => Parse3(restI, g))),
             // TODO: to check for ambiguous parses, we can use
-            // .SingleArg(…) instead of .FirstArg(…).
+            // .Single(…) instead of .First(…).
             Or: l =>
               l.First(g => Parse3(rest, g)),
-            Sequence: l =>
-              l.BindFoldMap(rest, (restI, g) => Parse3(restI, g))
-               .IfSome((restN, nodes) => (restN, AstNode.Operator(nodes))),
+            Sequence: l => {
+              return l.BindFoldMap(rest, (restI, g) => Parse3(restI, g))
+               .IfSome((restN, nodes) => {
+                 Log($"{nodes.Count()}/{l.Count()}");
+                 return (restN, AstNode.Operator(nodes));
+               });
+            },
             Terminal: t =>
               first.state.Equals(t)
               ? (rest,
@@ -60,7 +68,7 @@ public static partial class Parser {
   public static Option<ValueTuple<IImmutableEnumerator<Lexeme>, AstNode>> Parse2(string source) {
     Grammar2 grammar =
       DefaultGrammar.DefaultPrecedenceDAG.ToGrammar2();
-    Log(grammar.Str());
+    //Log(grammar.Str());
 
     var P = Func.YMemoize<
               IImmutableEnumerator<Lexeme>,
@@ -73,6 +81,11 @@ public static partial class Parser {
   }
 
   public static Ast.Expr Parse(string source) {
+    Log("");
+    Log("" + Parse2(source).ToString());
+    Log("");
+    Environment.Exit(0);
+
     return Lexer.Lex(source)
       .SelectMany(lexeme =>
         lexeme.state.Match(

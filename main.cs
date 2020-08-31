@@ -22,7 +22,7 @@ public static class MainClass {
     var destPath = tests_results.Combine(source);
     var sourcePath = tests.Combine(source);
     var expected = sourcePath.DropExtension().Combine(Ext(".o"));
-    
+
     Console.Write($"\x1b[KRunning test {source} ({toolchainName}) ");
     
     destPath.DirName().Create();
@@ -47,7 +47,7 @@ public static class MainClass {
         Console.WriteLine($"\x1b[1;33m{source}: expected {expectedStr} but got {actualStr}.\x1b[m\n");
         return false;
       } else {
-        Console.Write("\x1b[1;32mOK\x1b[m\r");
+        Console.Write("\x1b[1;32mOK\x1b[m"); // \r at the end for quiet
         return true;
       }
     }
@@ -58,13 +58,13 @@ public static class MainClass {
     // first-class functions by using repeated .Add()
     // See https://repl.it/@suzannesoy/WarlikeWorstTraining#main.cs
     var compilers = ImmutableList<Tuple<string, Compiler, Exe>>.Empty
-      .Cons(" js ", Compilers.JS.Compile, Exe("node"))
-      .Cons("eval", Evaluator.Evaluate,   Exe("cat"));
+      .Add(" js ", Compilers.JS.Compile, Exe("node"))
+      .Add("eval", Evaluator.Evaluate,   Exe("cat"));
 
     var total = 0;
     var passed = 0;
     var failed = 0;
-    foreach (var t in Dir("Tests/").GetFiles("*.e", SearchOption.AllDirectories)) {
+    foreach (var t in Dir("Tests/").GetFiles("*.e", SearchOption.AllDirectories).OrderBy(f => f.ToString())) {
       foreach (var compiler in compilers) {
         if (RunTest(compiler.Item1, compiler.Item2, compiler.Item3, t)) {
           passed++;

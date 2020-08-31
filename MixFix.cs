@@ -21,9 +21,20 @@ public static partial class MixFix {
     public static Grammar1 Or(params Grammar1[] xs)
       => Or(xs.ToImmutableList());
 
+    public static Grammar1 Empty
+      = new Grammar1.Cases.Sequence(Enumerable.Empty<Grammar1>());
+      
+    public static Grammar1 Impossible
+      = new Grammar1.Cases.Or(Enumerable.Empty<Grammar1>());
+
+    // TODO: inline the OR, detect impossible cases (Or of 0)
     public static Grammar1 Sequence(IEnumerable<Grammar1> xs) {
       var filteredXs = xs.Where(x => !x.IsEmpty);
-      if (filteredXs.Count() == 1) {
+      if (filteredXs.Any(x => x.IsImpossible)) {
+        return Impossible;
+      } else if (filteredXs.Count() == 0) {
+        return Empty;
+      } else if (filteredXs.Count() == 1) {
         return filteredXs.Single().ElseThrow(() => new Exception("TODO: use an either to prove that this is safe."));
       } else {
         return new Grammar1.Cases.Sequence(filteredXs);
@@ -31,8 +42,17 @@ public static partial class MixFix {
     }
 
     public static Grammar1 Or(IEnumerable<Grammar1> xs) {
-      var filteredXs = xs.Where(x => !x.IsEmpty);
-      if (filteredXs.Count() == 1) {
+      var filteredXsNoEmpty = 
+        xs.Where(x => !x.IsImpossible)
+          .Where(x => !x.IsEmpty);
+      var filteredXs =
+        (   xs.Any(x => x.IsEmpty)
+         && !filteredXsNoEmpty.Any(x => x.AllowsEmpty))
+        ? Empty.Cons(filteredXsNoEmpty)
+        : filteredXsNoEmpty;
+      if (filteredXs.All(x => x.IsImpossible)) {
+        return new Grammar1.Cases.Or(Enumerable.Empty<Grammar1>());
+      } else if (filteredXs.Count() == 1) {
         return filteredXs.Single().ElseThrow(() => new Exception("TODO: use an either to prove that this is safe."));
       } else {
         return new Grammar1.Cases.Or(filteredXs);
@@ -42,15 +62,38 @@ public static partial class MixFix {
     public static Grammar1 RepeatOnePlus(Grammar1 g)
       => g.IsEmpty
         ? Grammar1.Empty
+        : g.IsImpossible
+        ? Grammar1.Impossible
         : new Grammar1.Cases.RepeatOnePlus(g);
-
-    public static Grammar1 Empty = new Grammar1.Cases.Or(Enumerable.Empty<Grammar1>());
 
     public bool IsEmpty {
       get => this.Match(
-        Or: l => l.Count() == 0,
-        Sequence: l => l.Count() == 0,
+        Or: l => l.All(g => g.IsEmpty),
+        Sequence: l => l.All(g => g.IsEmpty),
         RepeatOnePlus: g => g.IsEmpty,
+        Terminal: t => false,
+        Rule: r => false
+      );
+    }
+
+    // TODO: cache this!
+    public bool AllowsEmpty {
+      get => this.Match(
+        Or: l => l.Any(g => g.AllowsEmpty),
+        Sequence: l => l.All(g => g.IsEmpty),
+        // This one should not be true, if it is
+        // then the precedence graph may be ill-formed?
+        RepeatOnePlus: g => g.AllowsEmpty,
+        Terminal: t => false,
+        Rule: r => false
+      );
+    }
+
+    public bool IsImpossible {
+      get => this.Match(
+        Or: l => l.All(g => g.IsImpossible),
+        Sequence: l => l.Any(g => g.IsImpossible),
+        RepeatOnePlus: g => g.IsImpossible,
         Terminal: t => false,
         Rule: r => false
       );
@@ -65,8 +108,8 @@ public static partial class MixFix {
     public static implicit operator Grammar1((Grammar1 a, Grammar1 b, Grammar1 c) gs)
       => Sequence(gs.a, gs.b, gs.c);
 
-    public static bool operator true(Grammar1 g) => !g.IsEmpty;
-    public static bool operator false(Grammar1 g) => g.IsEmpty;
+    public static bool operator true(Grammar1 g) => !g.IsImpossible;
+    public static bool operator false(Grammar1 g) => g.IsImpossible;
 
     public Grammar1 this[string multiplicity] {
       get {
@@ -85,17 +128,52 @@ public static partial class MixFix {
     private string Paren(bool paren, string s)
       => paren ? $"({s})" : s;
 
-    string CustomToString()
-      => this.Match<string>(
-        Or: l => l.Count() == 0
-          ? "Or(Empty)"
-          : Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(" | ")),
-        Sequence: l => l.Count() == 0
-          ? "Sequence(Empty)"
-          : Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(",")),
-        RepeatOnePlus: g => $"({g.Str()})+",
+    string CustomToString() =>
+        this.IsEmpty ? "Empty"
+      : this.IsImpossible ? "Impossible"
+      : this.Match<string>(
+        Or: l =>
+          Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(" | ")),
+        Sequence: l =>
+          Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(", ")),
+        RepeatOnePlus: g => $"{g.Str()}+",
         Terminal: t => t.Str(),
         Rule: r => r
+      );
+  }
+
+  public partial class Grammar2 {
+    public bool IsEmpty {
+      get => this.Match(
+        Or: l => l.All(g => g.IsEmpty),
+        Sequence: l => l.All(g => g.IsEmpty),
+        RepeatOnePlus: g => g.IsEmpty,
+        Terminal: t => false
+      );
+    }
+
+    public bool IsImpossible {
+      get => this.Match(
+        Or: l => l.All(g => g.IsImpossible),
+        Sequence: l => l.Any(g => g.IsImpossible),
+        RepeatOnePlus: g => g.IsImpossible,
+        Terminal: t => false
+      );
+    }
+
+    private string Paren(bool paren, string s)
+      => paren ? $"({s})" : s;
+
+    string CustomToString() =>
+        this.IsEmpty ? "Empty"
+      : this.IsImpossible ? "Impossible"
+      : this.Match<string>(
+        Or: l =>
+          Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(" | ")),
+        Sequence: l =>
+          Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(", ")),
+        RepeatOnePlus: g => $"{g.Str()}+",
+        Terminal: t => t.Str()
       );
   }
 
@@ -222,7 +300,7 @@ public static partial class MixFix {
     = new PrecedenceDAG(EmptyDAGNode);
 
   public static Whole Add<Whole>(this ILens<DAGNode, Whole> node, Operator @operator) {
-    return @operator.fixity.Match(
+    return @operator.Cons(@operator.fixity.Match(
       Closed:
         () => node.Closed(),
       Prefix:
@@ -235,7 +313,7 @@ public static partial class MixFix {
         () => node.InfixRightAssociative(),
       InfixLeftAssociative:
         () => node.InfixLeftAssociative()
-    ).Cons(@operator);
+    ));
   }
 
   public static void CheckHole(PrecedenceDAG precedenceDAG, Operator @operator, string name, Option<Hole> existing, Option<Hole> @new) {
@@ -344,15 +422,27 @@ public static partial class MixFix {
     var infixl = node.infixLeftAssociative.ToGrammar1();
     var infixr = node.infixRightAssociative.ToGrammar1();
 
+
+    //Log("closed.IsImpossible:"+closed.IsImpossible);
+
+
+
+
+
     // TODO: BUG: only include these parts if there are
-    // any operators with that fixity.
+    // any operators with that fixity, with the code below
+    // they are empty.
+
+
+
+
     return
-        closed
-      | (nonAssoc ? (lsucc, nonAssoc, rsucc) : Grammar1.Empty)
+        (closed ? closed : Grammar1.Impossible)
+      | (nonAssoc ? (lsucc, nonAssoc, rsucc) : Grammar1.Impossible)
+      // TODO: post-processsing of the rightassoc list.
+      | ((prefix || infixr) ? ((prefix || (lsucc, infixr))["+"], rsucc) : Grammar1.Impossible)
       // TODO: post-processsing of the leftassoc list.
-      | ((prefix || infixr) ? ((prefix | (lsucc, infixr))["+"], rsucc) : Grammar1.Empty)
-      // TODO: post-processsing of the leftassoc list.
-      | ((postfix || infixl) ? (lsucc, (postfix | (infixl, rsucc))["+"]) : Grammar1.Empty);
+      | ((postfix || infixl) ? (lsucc, (postfix || (infixl, rsucc))["+"]) : Grammar1.Impossible);
   }
 
   public static EquatableDictionary<string, Grammar1> ToGrammar1(this PrecedenceDAG precedenceDAG)
@@ -363,15 +453,28 @@ public static partial class MixFix {
   private static Grammar2 Recur(Func<Grammar1, EquatableDictionary<string, Grammar1>, Grammar2> recur, Grammar1 grammar1, EquatableDictionary<string, Grammar1> labeled)
     => grammar1.Match<Grammar2>(
       // TODO: throw exception if lookup fails
-      Rule:          r => recur(labeled[r], labeled),
+      Rule:          r => {
+        Grammar1 lr = null;
+        try {
+          lr = labeled[r];
+        } catch (Exception e) {
+          throw new ParserExtensionException($"Internal error: could not find node {r} in labeled grammar. It only contains labels for: {labeled.Select(kvp => kvp.Key.ToString()).JoinWith(", ")}.");
+        }
+        return recur(labeled[r], labeled);
+      },
       Terminal:      t => Grammar2.Terminal(t),
       Sequence:      l => Grammar2.Sequence(l.Select(g => recur(g, labeled))),
       Or:            l => Grammar2.Or(l.Select(g => recur(g, labeled))),
       RepeatOnePlus: g => Grammar2.RepeatOnePlus(recur(g, labeled))
     );
 
-  public static Grammar2 ToGrammar2(this EquatableDictionary<string, Grammar1> labeled)
-    => Func.YMemoize<Grammar1, EquatableDictionary<string, Grammar1>, Grammar2>(Recur)(Grammar1.Rule("program"), labeled);
+  public static Grammar2 ToGrammar2(this EquatableDictionary<string, Grammar1> labeled) {
+    foreach (var kvp in labeled) {
+      Log($"{kvp.Key} -> {kvp.Value.ToString()}");
+    }
+    Log("");
+    return Func.YMemoize<Grammar1, EquatableDictionary<string, Grammar1>, Grammar2>(Recur)(Grammar1.Rule("program"), labeled);
+  }
 
   public static Grammar2 ToGrammar2(this PrecedenceDAG precedenceDAG)
     => precedenceDAG.ToGrammar1().ToGrammar2();

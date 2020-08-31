@@ -10,8 +10,8 @@ public static class LensExtensionMethods {
   public static Whole Update<Hole, Whole>(this ILens<Hole, Whole> lens, Hole newHole)
     => lens.Update(oldHole => newHole);
 
-  public static Whole Cons<T, Whole>(this ILens<ImmutableList<T>, Whole> lens, T value)
-    => lens.Update(oldHole => oldHole.Cons(value));
+  public static Whole Cons<T, Whole>(this T value, ILens<ImmutableList<T>, Whole> lens)
+    => lens.Update(oldHole => value.Cons(oldHole));
 
   public static ILens<string, Whole> ChainLens<Whole>(this string hole, System.Func<string, Whole> wrap) => new LeafLens<string, Whole>(wrap: wrap, oldHole: hole);
 
