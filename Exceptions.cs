@@ -16,6 +16,10 @@ public class LexerErrorException : UserErrorException {
   public LexerErrorException(string e) : base("Lexer error: " + e) {}
 }
 
+public class RuntimeErrorException : UserErrorException {
+  public RuntimeErrorException(string e) : base("Runtime error: " + e) {}
+}
+
 public class TestFailedException : UserErrorException {
   public TestFailedException(string e) : base("Test failed: " + e) {}
 }

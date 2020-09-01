@@ -64,7 +64,7 @@ public static partial class Lexer {
     public static ImmutableList<Rule> Default = ImmutableList(
       Rule(S.Space,   C.DecimalDigitNumber, S.Int),
       Rule(S.Space,   C.SpaceSeparator,     S.Space),
-      Rule(S.Space,   EOF,                  S.End),
+      Rule(S.Space,   EOF,                  S.EndOfInput, S.End),
       Rule(S.Space,   '"',                  S.StringOpen, S.String),
       Rule(S.Space,   '=',                  S.Eq),
       Rule(S.Eq,      '=',                  S.Eq, S.Space),
@@ -242,8 +242,10 @@ public static partial class Lexer {
   }
 
   public static IImmutableEnumerator<Lexeme> Lex(string source)
-    => Lex1(source)
-         .Flatten()
-         //.Lazy(SkipInitialEmptyWhitespace.Eq)
-         .Lazy(DiscardWhitespace.Eq);
+    => new Lexeme(S.StartOfInput, "").ImSingleton()
+         .Concat(
+            Lex1(source)
+            .Flatten()
+            //.Lazy(SkipInitialEmptyWhitespace.Eq)
+            .Lazy(DiscardWhitespace.Eq));
 }

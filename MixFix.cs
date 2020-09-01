@@ -401,10 +401,11 @@ public static partial class MixFix {
     return precedenceDAG.lens[@operator.precedenceGroup].Add(@operator);
   }
 
-  public static PrecedenceDAG WithOperator(this PrecedenceDAG precedenceDAG, string precedenceGroup, Associativity associativity, params Part[] parts)
+  public static PrecedenceDAG WithOperator(this PrecedenceDAG precedenceDAG, string precedenceGroup, Semantics semantics, Associativity associativity, params Part[] parts)
     => precedenceDAG.With(
       new Operator(
         precedenceGroup: precedenceGroup,
+        semantics: semantics,
         associativity: associativity,
         parts: parts.ToImmutableList()));
 
@@ -436,7 +437,6 @@ public static partial class MixFix {
     Func<Grammar1, Grammar1> L = g => SamePrecedence(Associativity.LeftAssociative, g);
     Func<Grammar1, Grammar1> N = g => SamePrecedence(Associativity.NonAssociative, g);
     Func<Grammar1, Grammar1> H = g => Grammar1.Annotated((Annotation.Hole, g));
-    var Impossible = Grammar1.Impossible;
 
     var lsucc = H(node.leftmostHole_.ToGrammar1());
     var rsucc = H(node.rightmostHole_.ToGrammar1());
@@ -448,12 +448,10 @@ public static partial class MixFix {
     var infixr = node.infixRightAssociative.ToGrammar1();
 
     return
-        // TODO: we can normally remove the ?: checks, as the constructors for grammars
-        // now coalesce Impossible cases in the correct way.
-        (closed ? N(closed) : Impossible)
-      | (nonAssoc ? N( (lsucc, nonAssoc, rsucc) ) : Impossible)
-      | ((prefix || infixr) ? R( ((prefix | (lsucc, infixr))["+"], rsucc) ) : Impossible)
-      | ((postfix || infixl) ? L( (lsucc, (postfix || (infixl, rsucc))["+"]) ) : Impossible);
+        N(closed)
+      | N( (lsucc, nonAssoc, rsucc) )
+      | R( ((prefix | (lsucc, infixr))["+"], rsucc) )
+      | L( (lsucc, (postfix || (infixl, rsucc))["+"]) );
   }
 
   public static EquatableDictionary<string, Grammar1> ToGrammar1(this PrecedenceDAG precedenceDAG)
@@ -468,7 +466,7 @@ public static partial class MixFix {
         Grammar1 lr = null;
         try {
           lr = labeled[r];
-        } catch (Exception e) {
+        } catch (Exception) {
           throw new ParserExtensionException($"Internal error: could not find node {r} in labeled grammar. It only contains labels for: {labeled.Select(kvp => kvp.Key.ToString()).JoinWith(", ")}.");
         }
         return recur(labeled[r], labeled);

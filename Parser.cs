@@ -29,67 +29,33 @@ public static partial class Parser {
             .IfSome((restN, nodes) => (restN, ParserResult.Productions(nodes))),
         // TODO: to check for ambiguous parses, we can use
         // .Single(…) instead of .First(…).
-        Or: l =>
-          l.First(g => Parse3(tokens, g)),
+        Or: l => {
+          var i = 0;
+          return l.First(g => {
+            i++;
+            //Log($"{i}/{l.Count()}: trying…");
+            var res = Parse3(tokens, g);
+            //Log($"{i}/{l.Count()}: {res}");
+            return res;
+          });
+        },
         Sequence: l =>
           l.BindFoldMap(tokens, (restI, g) => Parse3(restI, g))
             .IfSome((restN, nodes) => (restN, ParserResult.Productions(nodes))),
-        Terminal: t =>
-        // TODO: move the FirstAndRest here!
-          tokens
+        Terminal: t => {
+          var attempt = tokens
             .FirstAndRest()
             // When EOF is reached, the parser can't accept this derivation.
             .If((first, rest) => first.state.Equals(t))
-            .IfSome((first, rest) => (rest, ParserResult.Terminal(first))),
+            .IfSome((first, rest) => (rest, ParserResult.Terminal(first)));
+            /*if (attempt.IsNone) {
+              Log($"failed to match {tokens.FirstAndRest().IfSome((first, rest) => first)} against terminal {t}.");
+            }*/
+            return attempt;
+        },
         Annotated: a =>
-          // TODO: use the annotation to give some shape to these lists
           Parse3(tokens, a.Item2).IfSome((rest, g) =>
             (rest, ParserResult.Annotated((a.Item1, g)))));
-      // TODO: at the top-level, check that the lexemes
-      // are empty if the parser won't accept anything else.
-
-
-
-
-
-
-
-
-
-
-
-
-    // Variant("ParserResult",
-    // Case("(MixFix.Annotation, ParserResult)", "Annotated"),
-    // Case("Lexer.Lexeme", "Terminal"),
-    // Case("IEnumerable<ParserResult>", "Productions")),
-
-    // ParserResult = A(SamePrecedence, *) | A(Operator, repeat|Terminal) | A(Hole, SamePrecedence)
-
-    // Variant("ParserResult",
-    //   Case("(MixFix.Annotation, ParserResult)", "Annotated"),
-    //   Case("Lexer.Lexeme", "Terminal"),
-    //   Case("IEnumerable<ParserResult>", "Productions")),
-
-    // Variant("ParserResult2",
-    //   Case("IEnumerable<OperatorOrHole>", "SamePrecedence")),
-    // Variant("OperatorOrHole",
-    //   Case("IEnumerable<SamePrecedenceOrTerminal>", "Operator")
-    //   Case("Ast.SamePrecedence", "Hole")),
-    // Variant("SamePrecedenceOrTerminal",
-    //   Case("Ast.SamePrecedence", "SamePrecedence"),
-    //   Case("Lexer.Lexeme", "Terminal")),
-
-    // Annotated(Hole, lsucc);
-    // Annotated(Operator, closed, nonAssoc, prefix, postfix, infixl, infixr)
-
-    // return
-    //     // TODO: we can normally remove the ?: checks, as the constructors for grammars
-    //     // now coalesce Impossible cases in the correct way.
-    //     (closed ? N(closed) : Impossible)
-    //   | (nonAssoc ? N( (lsucc, nonAssoc, rsucc) ) : Impossible)
-    //   | ((prefix || infixr) ? R( ((prefix | (lsucc, infixr))["+"], rsucc) ) : Impossible)
-    //   | ((postfix || infixl) ? L( (lsucc, (postfix || (infixl, rsucc))["+"]) ) : Impossible);
 
   // We lost some typing information and the structure is scattered around
   // in Annotation nodes. For now gather everything back into the right
@@ -430,7 +396,7 @@ public static partial class Parser {
   }
   */
 
-  public static Option<ValueTuple<IImmutableEnumerator<Lexeme>, AstNode>> Parse2(string source) {
+  public static ValueTuple<IImmutableEnumerator<Lexeme>, AstNode> Parse2(string source) {
     Grammar2 grammar =
       DefaultGrammar.DefaultPrecedenceDAG.ToGrammar2();
     //Log(grammar.Str());
@@ -442,42 +408,37 @@ public static partial class Parser {
       Parse3
     );
 
-    Log(grammar.ToString());
+    var lexSrc = Lexer.Lex(source);
 
-    return P(Lexer.Lex(source), grammar)
-      .IfSome((rest, result) => (rest, result.Gather().PostProcess()));
+    /*lexSrc
+      .ToIEnumerable()
+      .Select(c => c.state.ToString())
+      .JoinWith(" ")
+      .Pipe(x => Log(x));*/
+
+    //Log("");
+
+    var parsed = P(lexSrc, grammar)
+      .IfSome((rest, result) => (rest, result.Gather().PostProcess()))
+      .ElseThrow(() => new ParserErrorException("Parse error."));
+    
+    parsed.Item1.FirstAndRest().IfSome(
+      (first, rest) => {
+        lexSrc
+          .ToIEnumerable()
+          .TakeUntil(c => c.Equals(parsed.Item1))
+          .Select(c => c.lexeme.ToString())
+          .JoinWith(" ")
+          .Pipe(x => throw new ParserErrorException(
+        $"Trailing rubbish: {x}."));
+        return Unit.unit;
+      });
+
+    return parsed;
   }
 
-  public static Ast.Expr Parse(string source) {
-    Log("");
-    Log("Parsed:" + Parse2(source).ToString());
-    Log("");
-
-    return Lexer.Lex(source)
-      .SelectMany(lexeme =>
-        lexeme.state.Match(
-          Int: () => Ast.Expr.Int(Int32.Parse(lexeme.lexeme)).Singleton(),
-          String: () => Ast.Expr.String(lexeme.lexeme).Singleton(),
-          Ident: () => Enumerable.Empty<Ast.Expr>(), // TODO
-          And: () => Enumerable.Empty<Ast.Expr>(), // TODO
-          Plus: () => Enumerable.Empty<Ast.Expr>(), // TODO
-          Times: () => Enumerable.Empty<Ast.Expr>(), // TODO
-          Space: () => Enumerable.Empty<Ast.Expr>(), // ignore
-          Eq: () => Enumerable.Empty<Ast.Expr>(), // TODO
-          End: () => Enumerable.Empty<Ast.Expr>(), // TODO
-          Decimal: () => Enumerable.Empty<Ast.Expr>(), // TODO
-          StringOpen: () => Enumerable.Empty<Ast.Expr>(), // TODO
-          StringClose: () => Enumerable.Empty<Ast.Expr>()
-        )
-      )
-      .Single()
-      .ElseThrow(() => new ParserErrorException(
-        "empty file or more than one expression in file."));
-  }
-
-  public static void RecursiveDescent(IEnumerable<Lexeme> e) {
-
-  }
+  public static Ast.AstNode Parse(string source)
+    => Parse2(source).Item2;
 }
 
 // Notes:

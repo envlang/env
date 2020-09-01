@@ -49,9 +49,16 @@ public static class ParserGenerator {
           Case("RightAssociative")),
 
         Record("Operator",
+          Field("Semantics",           "semantics"),
           Field("PrecedenceGroupName", "precedenceGroup"),
           Field("Associativity",       "associativity"),
           Field("ImmutableList<Part>", "parts")),
+
+        Variant("Semantics",
+          Case("Program"),
+          Case("LiteralInt"),
+          Case("LiteralString"),
+          Case("Unsupported")),
 
         Variant("Part",
           Case("S",                                     "Name"),

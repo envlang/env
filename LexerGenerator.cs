@@ -15,7 +15,9 @@ public static class LexerGenerator {
           // grapheme clusters
           Field("string", "lexeme")),
         Variant("S",
+          Case("StartOfInput"),
           Case("End"),
+          Case("EndOfInput"),
           Case("Space"),
           Case("Int"),
           Case("Decimal"),

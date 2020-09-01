@@ -1,11 +1,12 @@
 namespace Compilers {
   public class JS {
-    public static string Compile(Ast.Expr source) {
+    public static string Compile(Ast.AstNode source) {
       return "process.stdout.write(String("
-      + source.Match(
+      + "\"no JS for now\""
+/*      + source.Match(
          Int: i => i.ToString(),
          String: s => $"'{s.ToString()}'"
-        )
+        )*/
       + "));";
     }
   }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using SearchOption = System.IO.SearchOption;
-using Compiler = System.Func<Ast.Expr, string>;
+using Compiler = System.Func<Ast.AstNode, string>;
 using static Global;
 
 public static class MainClass {
@@ -47,7 +47,7 @@ public static class MainClass {
         Console.WriteLine($"\x1b[1;33m{source}: expected {expectedStr} but got {actualStr}.\x1b[m\n");
         return false;
       } else {
-        Console.Write("\x1b[1;32mOK\x1b[m"); // \r at the end for quiet
+        Console.Write("\x1b[1;32mOK\x1b[m\n"); // \r at the end for quiet
         return true;
       }
     }

@@ -13,6 +13,10 @@ public static class AstGenerator {
           Case("int", "Int"),
           Case("string", "String")),
 
+        Variant("Val",
+          Case("int", "Int"),
+          Case("string", "String")),
+
         Variant("ParserResult",
           Case("(MixFix.Annotation, ParserResult)", "Annotated"),
           Case("Lexer.Lexeme", "Terminal"),
