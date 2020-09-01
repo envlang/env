@@ -12,11 +12,23 @@ public static class AstGenerator {
         Variant("Expr",
           Case("int", "Int"),
           Case("string", "String")),
+
         Variant("ParserResult",
-          Case("(MixFix.Annotation, IEnumerable<ParserResult>)", "Annotated"),
+          Case("(MixFix.Annotation, ParserResult)", "Annotated"),
+          Case("Lexer.Lexeme", "Terminal"),
+          Case("IEnumerable<ParserResult>", "Productions")),
+
+        Variant("ParserResult2",
+          Case("ValueTuple<MixFix.Associativity, IEnumerable<OperatorOrHole>>", "SamePrecedence")),
+        Variant("OperatorOrHole",
+          Case("ValueTuple<MixFix.Operator, IEnumerable<SamePrecedenceOrTerminal>>", "Operator"),
+          Case("ParserResult2", "Hole")),
+        Variant("SamePrecedenceOrTerminal",
+          Case("ParserResult2", "SamePrecedence"),
           Case("Lexer.Lexeme", "Terminal")),
+
         Variant("AstNode",
           Case("Lexer.Lexeme", "Terminal"),
-          Case("IEnumerable<AstNode>", "Operator"))));
+          Case("ValueTuple<MixFix.Operator, IEnumerable<AstNode>>", "Operator"))));
   }
 }

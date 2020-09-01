@@ -32,6 +32,9 @@ public static class RecordGenerator {
       var F = @field.Key;
       var Ty = @field.Value;
       w($"    this.{F} = {F};");
+      w($"    if (object.ReferenceEquals({F}, null)) {{");
+      w($"      throw new Exception(\"Argument {Ty} {F} to {name} was null.\");");
+      w($"    }}");
     }
     w($"      this.hashCode = Equality.HashCode(\"{name}\",");
     w(String.Join(",\n", record.Select(@field =>

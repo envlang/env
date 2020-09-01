@@ -35,6 +35,21 @@ public static class ToStringImplementations {
   public static string Str<T>(this IEnumerable<Ast.ParserResult> e)
     => $"IEnumerab({e.Select(x => x.Str<Ast.ParserResult>()).JoinWith(", ")})";
 
+  public static string Str<T>(this IEnumerable<Ast.OperatorOrHole> e)
+    => $"IEnumerab({e.Select(x => x.Str<Ast.OperatorOrHole>()).JoinWith(", ")})";
+
+  public static string Str<T>(this ValueTuple<MixFix.Associativity, IEnumerable<Ast.OperatorOrHole>> t)
+    => $"({t.Item1.Str()}, {t.Item2.Str<IEnumerable<Ast.OperatorOrHole>>()})";
+
+  public static string Str<T>(this IEnumerable<Ast.SamePrecedenceOrTerminal> e)
+    => $"IEnumerab({e.Select(x => x.Str<Ast.SamePrecedenceOrTerminal>()).JoinWith(", ")})";
+
+  public static string Str<T>(this ValueTuple<MixFix.Operator, IEnumerable<Ast.SamePrecedenceOrTerminal>> t)
+    => $"({t.Item1.Str()}, {t.Item2.Str<IEnumerable<Ast.SamePrecedenceOrTerminal>>()})";
+
+  public static string Str<T>(this ValueTuple<MixFix.Operator, IEnumerable<Ast.AstNode>> t)
+    => $"({t.Item1.Str()}, {t.Item2.Str<IEnumerable<Ast.AstNode>>()})";
+
   public static string Str<Grammar>(this ImmutableDictionary<string,Grammar> h)
     => $"ImmutableDictionary(\n{h.Select(x => $"  {x.Key.Str<string>()}:{x.Value.Str<Grammar>()}").JoinWith(",\n")}\n)";
 

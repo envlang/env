@@ -21,10 +21,11 @@ public static partial class Parser {
     IImmutableEnumerator<Lexeme> tokens,
     Grammar2 grammar
     )
+    //=> Log($"Parser {grammar.ToString()} against {tokens.FirstAndRest().IfSome((first, rest) => first)}", ()
     => grammar.Match(
         RepeatOnePlus: g =>
           tokens.FoldMapWhileSome(restI => Parse3(restI, g))
-            .If((restN, nodes) => nodes.Count() > 1)
+            .If((restN, nodes) => nodes.Count() >= 1)
             .IfSome((restN, nodes) => (restN, ParserResult.Productions(nodes))),
         // TODO: to check for ambiguous parses, we can use
         // .Single(…) instead of .First(…).
@@ -59,10 +60,25 @@ public static partial class Parser {
 
 
     // Variant("ParserResult",
-    //   Case("(Annotation, IEnumerable<ParserResult>)", "Annotated"),
-    //   Case("Lexer.Lexeme", "Terminal"))
+    // Case("(MixFix.Annotation, ParserResult)", "Annotated"),
+    // Case("Lexer.Lexeme", "Terminal"),
+    // Case("IEnumerable<ParserResult>", "Productions")),
 
-    // ParserResult = A(SamePrecedence, *) | A(Operator, *) | A(Hole, *)
+    // ParserResult = A(SamePrecedence, *) | A(Operator, repeat|Terminal) | A(Hole, SamePrecedence)
+
+    // Variant("ParserResult",
+    //   Case("(MixFix.Annotation, ParserResult)", "Annotated"),
+    //   Case("Lexer.Lexeme", "Terminal"),
+    //   Case("IEnumerable<ParserResult>", "Productions")),
+
+    // Variant("ParserResult2",
+    //   Case("IEnumerable<OperatorOrHole>", "SamePrecedence")),
+    // Variant("OperatorOrHole",
+    //   Case("IEnumerable<SamePrecedenceOrTerminal>", "Operator")
+    //   Case("Ast.SamePrecedence", "Hole")),
+    // Variant("SamePrecedenceOrTerminal",
+    //   Case("Ast.SamePrecedence", "SamePrecedence"),
+    //   Case("Lexer.Lexeme", "Terminal")),
 
     // Annotated(Hole, lsucc);
     // Annotated(Operator, closed, nonAssoc, prefix, postfix, infixl, infixr)
@@ -75,11 +91,251 @@ public static partial class Parser {
     //   | ((prefix || infixr) ? R( ((prefix | (lsucc, infixr))["+"], rsucc) ) : Impossible)
     //   | ((postfix || infixl) ? L( (lsucc, (postfix || (infixl, rsucc))["+"]) ) : Impossible);
 
-  public static AstNode PostProcess(this ParserResult parserResult) {
-    parserResult.Match(
-      Annotated: 
-    )
-    throw new ParserErrorException("TODO:" + parserResult.ToString());
+  // We lost some typing information and the structure is scattered around
+  // in Annotation nodes. For now gather everything back into the right
+  // structure after the fact.
+  public static ParserResult2 Gather(this ParserResult parserResult)
+    => parserResult
+      .AsAnnotated
+      .ElseThrow(new ParserErrorException("Internal error: Expected Annotated"))
+      .Pipe(a => a.Item1.AsSamePrecedence
+        .ElseThrow(new ParserErrorException("Internal error: Expected SamePrecedence"))
+        .Pipe(associativity =>
+          ParserResult2.SamePrecedence(
+            (associativity, a.Item2.GatherOperatorOrHole()))));
+
+  public static IEnumerable<OperatorOrHole> GatherOperatorOrHole(this ParserResult parserResult)
+    => parserResult.Match(
+      Annotated: a => a.Item1.Match(
+        Operator: @operator =>
+          OperatorOrHole.Operator(
+            (@operator, a.Item2.GatherSamePrecedenceOrTerminal()))
+          .Singleton(),
+        Hole: () =>
+          OperatorOrHole.Hole(
+            a.Item2.Gather())
+          .Singleton(),
+        SamePrecedence: associativity =>
+          throw new ParserErrorException("Internal error: Expected Operator or Hole")
+        ),
+      Productions: p =>
+        p.SelectMany(GatherOperatorOrHole),
+      Terminal: t =>
+        throw new ParserErrorException("Internal error: Expected Annotated or Productions"));
+
+  public static IEnumerable<SamePrecedenceOrTerminal> GatherSamePrecedenceOrTerminal(this ParserResult parserResult)
+    => parserResult.Match(
+      Annotated: a => a.Item1.Match(
+        SamePrecedence: associativity =>
+          SamePrecedenceOrTerminal.SamePrecedence(
+            parserResult.Gather())
+          .Singleton(),
+        Hole: () =>
+          throw new ParserErrorException("Internal error: Expected SamePrecedence or Terminal"),
+        Operator: associativity =>
+          throw new ParserErrorException("Internal error: Expected SamePrecedence or Terminal")
+        ),
+      Productions: p =>
+        p.SelectMany(GatherSamePrecedenceOrTerminal),
+      Terminal: lexeme =>
+        SamePrecedenceOrTerminal.Terminal(lexeme)
+          .Singleton());
+
+  // ParserResult2 =
+  // | (MixFix.Associativity, IEnumerable<OperatorOrHole>) SamePrecedence
+  // OperatorOrHole =
+  // | (MixFix.Operator, IEnumerable<SamePrecedenceOrTerminal>) Operator
+  // | ParserResult2 Hole
+  // SamePrecedenceOrTerminal =
+  // | ParserResult2 SamePrecedence
+  // | Lexer.Lexeme Terminal
+
+  public static ValueTuple<MixFix.Associativity, IEnumerable<OperatorOrHole>> Get(this ParserResult2 parserResult)
+  => parserResult.Match(SamePrecedence: p =>p);
+
+  /*
+  public static IEnumerable<IEnumerable<T>> Split<T>(this IEnumerable<T> e, Func<T, T, bool> predicate) {
+    var currentList = ImmutableStack<T>.Empty;
+    T prev = default(T);
+    var first = true;
+    foreach (var x in e) {
+      if (first) {
+        first = false;
+      } else {
+        if (predicate(prev, x)) {
+          yield return currentList.Reverse();
+          currentList = ImmutableStack<T>.Empty;
+        }
+      }
+      currentList = currentList.Push(x);
+      prev = x;
+    }
+    yield return currentList.Reverse();
+  }*/
+
+  public static IEnumerable<IEnumerable<T>> Split<T>(this IEnumerable<T> e, Func<T, bool> predicate) {
+    var currentList = ImmutableStack<T>.Empty;
+    foreach (var x in e) {
+      if (predicate(x)) {
+        // yield the elements
+        yield return currentList.Reverse();
+        currentList = ImmutableStack<T>.Empty;
+        // yield the separator
+        yield return x.Singleton();
+      } else {
+        currentList = currentList.Push(x);
+      }
+    }
+    // yield the last (possibly empty) unclosed batch of elements
+    yield return currentList.Reverse();
+  }
+
+  /*
+  // TODO: use an Either<T, U> class instead of an Option with another Func.
+  public static IEnumerable<IEnumerable<U>> Split<T, U>(this IEnumerable<T> e, Func<T, Option<U>> predicate, Func<IEnumerable<T>, U> transform) {
+    var currentList = ImmutableStack<T>.Empty;
+    foreach (var x in e) {
+      var p = predicate(x);
+      if (p.IsSome) {
+        // yield the elements
+        yield return transform(currentList.Reverse());
+        currentList = ImmutableStack.Empty;
+        // yield the separator
+        yield return p.AsSome.ElseThrow("impossible");
+      } else {
+        currentList = currentList.Push(x);
+      }
+    }
+    // yield the last (possibly empty) unclosed batch of elements
+    yield return transform(currentList.Reverse());
+  }*/
+
+  public static A FoldLeft3<T,A>(this IEnumerable<T> ie, Func<T,T,T,A> init, Func<A,T,T,A> f) {
+    var e = ie.GetEnumerator();
+    e.MoveNext();
+    T a = e.Current;
+    e.MoveNext();
+    T b = e.Current;
+    e.MoveNext();
+    T c = e.Current;
+    A acc = init(a, b, c);
+    while (e.MoveNext()) {
+      T x = e.Current;
+      e.MoveNext();
+      T y = e.Current;
+      acc = f(acc, x, y);
+    }
+    return acc;
+  }
+
+  public static A FoldRight3<T,A>(this IEnumerable<T> ie, Func<T,T,T,A> init, Func<T,T,A,A> f) {
+    var e = ie.Reverse().GetEnumerator();
+    e.MoveNext();
+    T a = e.Current;
+    e.MoveNext();
+    T b = e.Current;
+    e.MoveNext();
+    T c = e.Current;
+    A acc = init(c, b, a);
+    while (e.MoveNext()) {
+      T x = e.Current;
+      e.MoveNext();
+      T y = e.Current;
+      acc = f(y, x, acc);
+    }
+    return acc;
+  }
+
+  public static AstNode PostProcess(this SamePrecedenceOrTerminal samePrecedenceOrTerminal)
+    => samePrecedenceOrTerminal.Match(
+      SamePrecedence: x => PostProcess(x),
+      // TODO: just writing Terminal: AstNode.Terminal causes a null exception
+      Terminal: x => AstNode.Terminal(x));
+
+  public static IEnumerable<AstNode> PostProcess(this OperatorOrHole operatorOrHole)
+    => operatorOrHole.Match(
+      Operator: o => o.Item2.Select(PostProcess),
+      Hole: h => h.PostProcess().Singleton());
+      
+
+  public static AstNode PostProcess(this ParserResult2 parserResult) {
+    // Let's start with right associativity
+    // TODO: handle other associativities
+
+    // We flatten by converting to a sequence of SamePrecedenceOrTerminal
+
+    // turn this:  h   h   o   h   o      o      o   h   h   o      o   h
+    // into this: (h   h) (o) (h) (o) () (o) () (o) (h   h) (o) () (o) (h)
+    // and  this:          o   h   o      o      o   h   h   o      o
+    // into this:      () (o) (h) (o) () (o) () (o) (h   h) (o) () (o) ()
+    // i.e. always have a (possibly empty) list on both ends.
+
+    var split = parserResult.Get().Item2.Split(x => x.IsOperator);
+
+    return parserResult.Get().Item1.Match(
+      NonAssociative: () => {
+        if (split.Count() != 3) {
+          throw new ParserErrorException($"Internal error: NonAssociative operator within group of {split.Count()} elements, expected exactly 3");
+        } else {
+          var @operator =
+            split.ElementAt(1)
+              .Single().ElseThrow(new Exception("impossible"))
+              .AsOperator.ElseThrow(new Exception("impossible"));
+          return AstNode.Operator(
+            (@operator.Item1,
+                     split.ElementAt(0).SelectMany(PostProcess)
+             .Concat(split.ElementAt(1).SelectMany(PostProcess))
+             .Concat(split.ElementAt(2).SelectMany(PostProcess))));
+        }
+      },
+      RightAssociative: () =>
+        split.FoldRight3(
+          // Last group of three
+          (hsl, o, hsr) => {
+            var @operator = o
+              .Single().ElseThrow(new Exception("impossible"))
+              .AsOperator.ElseThrow(new Exception("impossible"));
+            return AstNode.Operator(
+              (@operator.Item1,
+                      hsl.SelectMany(PostProcess)
+              .Concat(o.SelectMany(PostProcess))
+              .Concat(hsr.SelectMany(PostProcess))));
+          },
+          // Subsequent groups of two starting with accumulator
+          (hsl, o, a) => {
+            var @operator = o
+              .Single().ElseThrow(new Exception("impossible"))
+              .AsOperator.ElseThrow(new Exception("impossible"));
+            return AstNode.Operator(
+              (@operator.Item1,
+                      hsl.SelectMany(PostProcess)
+              .Concat(o.SelectMany(PostProcess))
+              .Concat(a)));
+          }),
+      LeftAssociative: () =>
+        split.FoldLeft3(
+          // Fist group of three
+          (hsl, o, hsr) => {
+            var @operator = o
+              .Single().ElseThrow(new Exception("impossible"))
+              .AsOperator.ElseThrow(new Exception("impossible"));
+            return AstNode.Operator(
+              (@operator.Item1,
+                      hsl.SelectMany(PostProcess)
+              .Concat(o.SelectMany(PostProcess))
+              .Concat(hsr.SelectMany(PostProcess))));
+          },
+          // Subsequent groups of two starting with accumulator
+          (a, o, hsr) => {
+            var @operator = o
+              .Single().ElseThrow(new Exception("impossible"))
+              .AsOperator.ElseThrow(new Exception("impossible"));
+            return AstNode.Operator(
+              (@operator.Item1,
+                      a.Singleton()
+              .Concat(o.SelectMany(PostProcess))
+              .Concat(hsr.SelectMany(PostProcess))));
+          }));
   }
 
   /*
@@ -186,16 +442,16 @@ public static partial class Parser {
       Parse3
     );
 
+    Log(grammar.ToString());
+
     return P(Lexer.Lex(source), grammar)
-      .IfSome((rest, result) => (rest, PostProcess(result)));
+      .IfSome((rest, result) => (rest, result.Gather().PostProcess()));
   }
 
   public static Ast.Expr Parse(string source) {
-    Parse2(source).ToString();
-    //Log("");
-    //Log("" + Parse2(source).ToString());
-    //Log("");
-    Environment.Exit(0);
+    Log("");
+    Log("Parsed:" + Parse2(source).ToString());
+    Log("");
 
     return Lexer.Lex(source)
       .SelectMany(lexeme =>

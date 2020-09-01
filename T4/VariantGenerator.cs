@@ -122,6 +122,11 @@ public static class VariantGenerator {
   private static void CaseConstructor(this Action<string> w, string qualifier, string name, string C, string Ty) {
     w($"         public {C}({Ty == null ? "" : $"{Ty} value"}) {{");
     w($"           {Ty == null ? "" : $"this.value = value; "}");
+    if (Ty != null) {
+      w($"    if (object.ReferenceEquals(value, null)) {{");
+      w($"      throw new Exception(\"Argument of type {Ty} to {name}.{C} was null.\");");
+      w($"    }}");
+    }
     if (Ty == null) {
       w($"           this.hashCode = HashCode.Combine(\"{C}\");");
     } else {

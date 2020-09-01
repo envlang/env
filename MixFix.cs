@@ -185,7 +185,9 @@ public static partial class MixFix {
           : Paren(l.Count() != 1, l.Select(x => x.Str()).JoinWith(", ")),
         RepeatOnePlus: g => $"{g.Str()}+",
         Terminal: t => t.Str(),
-        Annotated: a => $"Annotated({a.Item1.Str()}, {a.Item2.Str()})"
+        Annotated: a =>
+          //$"Annotated({a.Item1.Str()}, {a.Item2.Str()})"
+          $"~{a.Item2.Str()}"
       );
   }
 

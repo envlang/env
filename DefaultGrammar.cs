@@ -14,7 +14,7 @@ public static class DefaultGrammar {
       .WithOperator("multiplicative", LeftAssociative, "int|terminal", S.Times, "int|terminal")
       .WithOperator("terminal", NonAssociative, S.Ident)
       // This is the root set of operators
-      .WithOperator("program",  NonAssociative,
+      .WithOperator("program",  LeftAssociative,
       // "bool" // TODO: this needs aliases
       "equality|terminal", S.And, "equality|terminal");
 }
