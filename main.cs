@@ -58,8 +58,8 @@ public static class MainClass {
     // first-class functions by using repeated .Add()
     // See https://repl.it/@suzannesoy/WarlikeWorstTraining#main.cs
     var compilers = ImmutableList<Tuple<string, Compiler, Exe>>.Empty
-      .Add(" js ", Compilers.JS.Compile, Exe("node"))
-      .Add("eval", Evaluator.Evaluate,   Exe("cat"));
+      .Add(" js ", Compilers.JS.Compile,   Exe("node"))
+      .Add("eval", Evaluator.EvaluateWrap, Exe("cat"));
 
     var total = 0;
     var passed = 0;
@@ -99,8 +99,8 @@ public static class MainClass {
       } else {
         var source = args[0].File();
         var destPrefix = source.DropExtension();
-        CompileToFile(Compilers.JS.Compile, source, destPrefix.Combine(Ext(".js")));
-        CompileToFile(Evaluator.Evaluate,   source, destPrefix.Combine(Ext(".txt")));
+        CompileToFile(Compilers.JS.Compile,   source, destPrefix.Combine(Ext(".js")));
+        CompileToFile(Evaluator.EvaluateWrap, source, destPrefix.Combine(Ext(".txt")));
         Console.Write(destPrefix.Combine(Ext(".txt")).Read());
       }
     } catch (UserErrorException e) {
