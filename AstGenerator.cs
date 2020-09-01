@@ -13,11 +13,10 @@ public static class AstGenerator {
           Case("int", "Int"),
           Case("string", "String")),
         Variant("ParserResult",
-          Case("MixFix.Annotation", "Annotated"),
-          Case("Lexer.Lexeme", "Terminal"),
-          Case("IEnumerable<ParserResult>", "Productions")),
+          Case("(MixFix.Annotation, IEnumerable<ParserResult>)", "Annotated"),
+          Case("Lexer.Lexeme", "Terminal")),
         Variant("AstNode",
-          Case("Expr", "Terminal"),
+          Case("Lexer.Lexeme", "Terminal"),
           Case("IEnumerable<AstNode>", "Operator"))));
   }
 }

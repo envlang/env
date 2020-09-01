@@ -478,13 +478,8 @@ public static partial class MixFix {
       RepeatOnePlus: g => Grammar2.RepeatOnePlus(recur(g, labeled))
     );
 
-  public static Grammar2 ToGrammar2(this EquatableDictionary<string, Grammar1> labeled) {
-    foreach (var kvp in labeled) {
-      Log($"{kvp.Key} -> {kvp.Value.ToString()}");
-    }
-    Log("");
-    return Func.YMemoize<Grammar1, EquatableDictionary<string, Grammar1>, Grammar2>(Recur)(Grammar1.Rule("program"), labeled);
-  }
+  public static Grammar2 ToGrammar2(this EquatableDictionary<string, Grammar1> labeled)
+    => Func.YMemoize<Grammar1, EquatableDictionary<string, Grammar1>, Grammar2>(Recur)(Grammar1.Rule("program"), labeled);
 
   public static Grammar2 ToGrammar2(this PrecedenceDAG precedenceDAG)
     => precedenceDAG.ToGrammar1().ToGrammar2();

@@ -176,6 +176,9 @@ public static class Collection {
     }
   }
 
+  public static Option<U> Single<T, U>(this IEnumerable<T> ie, Func<T, Option<U>> f)
+    => ie.Select(f).Single(x => x.IsSome);
+
   public static Option<V> GetValue<K, V>(this ImmutableDictionary<K, V> d, K key) {
     V result = default(V);
     if (d.TryGetValue(key, out result)) {
