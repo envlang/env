@@ -90,8 +90,9 @@ public static class MainClass {
         Console.WriteLine("  Expression =");
         Console.WriteLine("    Int");
         Console.WriteLine("  | String");
-        Console.WriteLine("  | Variable");
-        Console.WriteLine("  | Pattern \"->\" Expression");
+        Console.WriteLine("  | true");
+        Console.WriteLine("  | false");
+        Console.WriteLine("  | Expression && Expression");
         Console.WriteLine("");
         Console.WriteLine("I'll run the tests for you in the meanwhile.");
         Console.WriteLine("");

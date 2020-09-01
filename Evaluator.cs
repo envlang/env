@@ -7,9 +7,13 @@ using static Global;
 
 public class Evaluator {
   public static string EvaluateWrap(Ast.AstNode source)
-    => Evaluate(source, ImmutableDictionary<string, Ast.Val>.Empty).Match(
+    => Evaluate(source, new Dictionary<string, Ast.Val> {
+      { "true", Ast.Val.Bool(true) },
+      { "false", Ast.Val.Bool(false) }
+    }.ToImmutableDictionary()).Match(
          Int: i => i.ToString(),
-         String: s => s);
+         String: s => s,
+         Bool: b => b ? "true" : "false");
 
   public static Ast.Val Evaluate(Ast.AstNode source, ImmutableDictionary<string, Ast.Val> env)
     // => Log(source.Str(), ()
@@ -23,6 +27,16 @@ public class Evaluator {
           // TODO: check that the last token is indeed Program
           return Evaluate(o.Item2.ElementAt(1), env);
         },
+        EnvLookup: () =>
+          o.Item2
+            .Single()
+            .ElseThrow(
+              new RuntimeErrorException("EnvLookup should contain a single lexeme"))
+            .AsTerminal
+            .ElseThrow(
+              new RuntimeErrorException("EnvLookup's contents should be a lexeme"))
+            .lexeme
+            .Pipe(x => env[x]),
         And: () => {
           if (o.Item2.Count() != 3) {
             throw new RuntimeErrorException("The And operator should contain three parts");
@@ -30,7 +44,12 @@ public class Evaluator {
           // TODO: check that the last token is indeed Program
           var a = Evaluate(o.Item2.ElementAt(0), env);
           var b = Evaluate(o.Item2.ElementAt(2), env);
-          return Ast.Val.Int(999);
+          return
+            Ast.Val.Bool(
+              a.AsBool.ElseThrow(new RuntimeErrorException("type error: and requires two bools"))
+              &&
+              b.AsBool.ElseThrow(new RuntimeErrorException("type error: and requires two bools"))
+            );
         },
         LiteralInt: () =>
           o.Item2

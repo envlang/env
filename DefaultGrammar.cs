@@ -13,7 +13,7 @@ public static class DefaultGrammar {
       .WithOperator("int",      LiteralInt,     NonAssociative, S.Int)
       .WithOperator("additive", Unsupported, LeftAssociative, "int|terminal|multiplicative", S.Plus, "int|terminal|multiplicative")
       .WithOperator("multiplicative", Unsupported, LeftAssociative, "int|terminal", S.Times, "int|terminal")
-      .WithOperator("terminal", Unsupported, NonAssociative, S.Ident)
+      .WithOperator("terminal", EnvLookup, NonAssociative, S.Ident)
       // This is the root set of operators
       // TODO: this needs aliases
       .WithOperator("prog",  And, LeftAssociative, "equality|terminal", S.And, "equality|terminal")

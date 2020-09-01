@@ -15,7 +15,8 @@ public static class AstGenerator {
 
         Variant("Val",
           Case("int", "Int"),
-          Case("string", "String")),
+          Case("string", "String"),
+          Case("bool", "Bool")),
 
         Variant("ParserResult",
           Case("(MixFix.Annotation, ParserResult)", "Annotated"),

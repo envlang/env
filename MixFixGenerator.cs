@@ -59,6 +59,7 @@ public static class ParserGenerator {
           Case("LiteralInt"),
           Case("LiteralString"),
           Case("And"),
+          Case("EnvLookup"),
           Case("Unsupported")),
 
         Variant("Part",
